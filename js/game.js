@@ -49,13 +49,29 @@ function fxHtml(fx) {
   const parts = Object.entries(fx || {}).filter(([k, v]) => v && statOf(k)).map(([k, v]) => `<span class="${v > 0 ? 'up' : 'down'}">${statOf(k).emoji}${statOf(k).name}${v > 0 ? '+' : ''}${v}</span>`);
   return parts.length ? `<div class="fx">${parts.join('')}</div>` : '';
 }
+// 指標顏色代表狀態：綠＝安全、黃＝注意、紅＝危險
+// 一般指標：低紅高綠；壓力反過來；「太高也會出事」的指標：中間安全區綠、兩端轉黃再轉紅（條上畫出安全區）
+const kindOf = s => s.id === 'stress' ? 'inv' : (s.high <= 100 ? 'band' : 'up');
+function stateOf(s, v) {
+  const k = kindOf(s);
+  if (k === 'inv') return v >= 75 ? 'red' : v >= 50 ? 'yel' : 'grn';
+  if (k === 'band') return (v <= s.low + 5 || v >= s.high - 5) ? 'red' : (v < 25 || v > 75) ? 'yel' : 'grn';
+  return v < 30 ? 'red' : v < 55 ? 'yel' : 'grn';
+}
+let LASTSTATS = null;
+function statCell(s) {
+  const v = G.stats[s.id], prev = LASTSTATS && LASTSTATS[s.id], d = prev == null ? 0 : v - prev;
+  const band = kindOf(s) === 'band' ? '<i class="safe"></i>' : '';
+  return `<div class="stat ${stateOf(s, v)} ${s.id === 'trust' ? 'key' : ''}">${s.emoji} ${v}${d ? `<span class="dl ${d > 0 ? 'up' : 'down'}">${d > 0 ? '+' : ''}${d}</span>` : ''}<div class="bar">${band}<div style="width:${v}%"></div></div><div>${s.name}</div></div>`;
+}
 // 頂部固定提示：現在在第幾回合、還能做幾件事、要按哪裡
 function guide(step) {
   const r = C.rounds[G.turn - 1] || {};
+  setTimeout(() => { LASTSTATS = Object.assign({}, G.stats); }, 0);
   return `<div class="hud">
     <div class="guide"><b>${r.label || ''}</b>${r.note ? `<span class="tag">${r.note}</span>` : ''}<span class="right">${T('第 {0}／{1} 回合', G.turn, G.turns)}</span></div>
     <div class="step">👉 ${step}</div>
-    ${['city', 'me'].map(grp => `<div class="statrow ${grp}"><span class="glabel">${grp === 'city' ? T('市府') : T('你')}</span><div class="stats">${C.stats.filter(s => s.group === grp).map(s => { const v = G.stats[s.id], warn = v <= s.low + 8 || v >= s.high - 8; return `<div class="stat ${warn ? 'warn' : ''} ${s.id === 'trust' ? 'key' : ''}">${s.emoji} ${v}<div class="bar"><div style="width:${v}%"></div></div><div>${s.name}</div></div>`; }).join('')}</div></div>`).join('')}
+    ${['city', 'me'].map(grp => `<div class="statrow ${grp}"><span class="glabel">${grp === 'city' ? T('市府') : T('你')}</span><div class="stats">${C.stats.filter(s => s.group === grp).map(statCell).join('')}</div></div>`).join('')}
     ${ruleShift(C, G) ? `<div class="shift">${T('📰 百日已過：再說「這是前任留下的」會被罵')}</div>` : ''}
   </div>`;
 }
@@ -88,7 +104,7 @@ function titleScreen() {
     <button class="btn" id="go">${T('開始 →')}</button>
     <button class="btn ghost" id="gal">${T('📚 圖鑑')}</button>
     <p class="muted center">${T('《我推的市長》系列 Part 2・一局約 8 分鐘<br>人物、政黨、城市全部虛構')}</p>
-    <p class="muted center">${T('摩卡與貓貓小隊')}・v0.6.3</p>`);
+    <p class="muted center">${T('摩卡與貓貓小隊')}・v0.6.4</p>`);
   $('#go').onclick = setupScreen;
   $('#gal').onclick = () => galleryScreen(titleScreen);
 }

@@ -164,25 +164,58 @@ const CAREER_MAYOR_OFFICE = {
   },
   // ===== 推薦人選：你推薦，市長決定 =====
   // 回傳 { ok, line, pick }：pick 是市長自己想要的人（被你說服不了時用）
+  // 市長對你推薦的人：信任中等以上多半接受；被拒是「事件」，理由看人選來源和老闆的真面目
   recommend: (g, slot, cand, offer) => {
-    const famous = ['scholar', 'ngo', 'central', 'peer'];
-    const prefer = { ear: 'party', showoff: null, central: 'holdover', corrupt: 'business', portrait: 'ngo', image: 'ngo', ambition: 'party' }[g.trait] || 'loyal';
-    let p = 0.2 + g.stats.trust * 0.008;
-    if (g.trait === 'showoff') p += famous.includes(cand.src) || cand.dream ? 0.15 : -0.15;
-    else if (cand.src === prefer) p += 0.2; else if (prefer && g.trait && g.trait !== 'good') p -= 0.15;
-    const ok = g.rng() < Math.max(0.1, Math.min(0.95, p));
-    const pool = offer.filter(c => c.id !== cand.id && c.src !== 'acting');
-    // 市長想要的來源：先從這次的人選找，沒有就從人才池「空降」
+    const M = CAREER_MAYOR_OFFICE;
+    // 老闆偏好的空降來源（依真面目）
+    const PREF = { good: ['peer', 'soe', 'central'], ear: ['party', 'loyal'], showoff: ['scholar', 'ngo', 'peer'], central: ['holdover', 'excounty'], image: ['ngo', 'business'], portrait: ['ngo', 'loyal'], corrupt: ['business'], ambition: ['party', 'central'] };
+    const pref = PREF[g.trait] || PREF.good;
+    let p = g.trait === 'good' ? 0.82 + g.stats.trust * 0.002 : 0.42 + g.stats.trust * 0.006;
+    if (g.trait !== 'good' && pref.includes(cand.src)) p += 0.15;
+    if (g.trait === 'showoff' && cand.dream) p += 0.2;
+    const ok = g.rng() < Math.max(0.15, Math.min(0.95, p));
+    // 拒絕理由：先看你推薦的人是哪一種，再看老闆的真面目；同一局不重複
+    const BYSRC = {
+      scholar: [T('「太學術了，議會會把他吃掉。」'), T('「教授很好，但他會在記者會上講真話。」'), T('「學者來當局長，第一次質詢就會哭著回學校。」')],
+      business: [T('「媒體會說利益衝突，我不想每天解釋。」'), T('「他前公司還在接案吧？等一下又上頭版。」'), T('「企業那一套，公務員不會買單。」')],
+      holdover: [T('「我們選上不是為了延續前任。」'), T('「前朝的人？支持者會覺得被背叛。」'), T('「他每週跟前任吃飯，你不知道嗎？」')],
+      party: [T('「黨部推的？我不想一上任就欠人情。」'), T('「又是黨部的人，記者會說是酬庸。」')],
+      loyal: [T('「自己人我很放心，但他沒做過行政。」'), T('「用自己人，會被說小圈圈。」')],
+      ngo: [T('「公民團體出身的，每件事都要開公聽會。」'), T('「他上任第一週就會跟議會吵起來。」')],
+      central: [T('「中央借來的，兩年後就走了。」'), T('「我不想讓中央的人管我們的事。」')],
+      peer: [T('「他要帶自己 5 個人進來，局處會反彈。」'), T('「鄰市的成績不代表在這裡行得通。」')],
+      excounty: [T('「他那套喬的方式，我怕出事。」'), T('「前地方首長來當局長，會不會太委屈他？」')],
+      soe: [T('「太保守了，四年什麼都做不出來。」')]
+    };
+    const BYTRAIT = {
+      ear: [T('「其實黨部已經推了一個人，我答應了。」'), T('「我身邊的人說，有更適合的。」'), T('「我朋友推薦了一位，我覺得不錯。」'), T('「這個……我再問問顧問的意見。」')],
+      showoff: [T('「這個人沒什麼名氣，我想找個大家都認識的。」'), T('「記者會上站出來，要有份量。」'), T('「我要一個新聞標題寫得出來的人。」'), T('「名單公布那天要有話題。」')],
+      central: [T('「我要一個會替我擋子彈的人。」'), T('「出事的時候，他會站出來嗎？」'), T('「我要老手，不要會講道理的。」'), T('「這個位子要扛得住罵。」')],
+      image: [T('「他在網路上沒什麼聲量。」'), T('「我要一個會拍影片的局長。」'), T('「他的照片不太上鏡。」'), T('「我想找個年輕人都認識的。」')],
+      portrait: [T('「他會不會比我還搶鏡？」'), T('「宣傳的事，我自己來就好。」'), T('「我要一個不搶功的人。」'), T('「記者會上，大家看的是市長。」')],
+      corrupt: [T('「我已經跟一位業界朋友談好了。」'), T('「這個位子，我想找懂做生意的。」'), T('「他太死板了，事情會卡住。」'), T('「我有人選了，你不用擔心。」')],
+      ambition: [T('「這個位子，黨中央有意見。」'), T('「我要找對我下一步有幫助的人。」'), T('「格局要大一點。」'), T('「中央有人推了一位，我不好拒絕。」')],
+      good: [T('「他很好，但我擔心他跟這個局處的同仁合不來。」'), T('「我想找更懂這個專業的人，你再幫我想想。」'), T('「我比較想找有實務經驗的，這位我先保留。」')]
+    };
+    g.flags.lines = g.flags.lines || [];
+    const pool1 = [...(BYSRC[cand.src] || []), ...(BYTRAIT[g.trait] || BYTRAIT.good)].filter(l => !g.flags.lines.includes(l));
+    const line = ok ? [T('「好，就他。」'), T('「嗯……好，聽你的。」'), T('「我也這麼想。」'), T('「你挑的，我放心。」')][Math.floor(g.rng() * 4)] : (pool1.length ? pool1[Math.floor(g.rng() * pool1.length)] : T('「我再想想……其實我已經有人選了。」'));
+    if (!ok) g.flags.lines.push(line);
+    // 空降人選：依真面目偏好的來源；同一局同一來源最多空降一次；先找對得上這個位子的
+    g.flags.para = g.flags.para || [];
     const used = Object.values(g.staffers || {});
-    const fromPool = src => CAREER_MAYOR_OFFICE.candidates.find(c => c.src === src && !c.dream && !used.includes(c.id) && !offer.some(o => o.id === c.id));
-    const pick = pool.find(c => c.src === prefer) || fromPool(prefer) || fromPool('loyal') || pool[0];
-    const lines = ok ? [T('「好，就他。」'), T('「嗯……好，聽你的。」'), T('「我也這麼想。」')]
-      : g.trait === 'ear' ? [T('「我再想想……其實黨部已經推了一個人，我答應了。」')]
-      : g.trait === 'showoff' ? [T('「這個人沒什麼名氣耶，我想找個大家都認識的。」')]
-      : g.trait === 'central' ? [T('「我要一個會替我擋子彈的人。」')]
-      : [T('「我再想想……其實我已經有人選了。」'), T('「這個位子，我想放自己人。」')];
-    return { ok, line: lines[Math.floor(g.rng() * lines.length)], pick };
+    const free = c => !c.dream && c.src !== 'acting' && c.id !== cand.id && !used.includes(c.id);
+    let pick = null;
+    for (const src of pref) {
+      if (g.flags.para.includes(src)) continue;
+      pick = offer.find(c => c.src === src && free(c)) || M.candidates.find(c => c.src === src && free(c) && c.fit && c.fit.includes(slot)) || M.candidates.find(c => c.src === src && free(c));
+      if (pick) break;
+    }
+    if (!pick) pick = offer.find(c => free(c) && c.src !== cand.src) || M.candidates.find(c => free(c) && c.fit && c.fit.includes(slot)) || offer.find(c => c.src === 'acting') || cand;
+    if (!ok && pick) g.flags.para.push(pick.src);
+    return { ok, line, pick };
   },
+
 
   // ===== 政見：每張走三步（議會審預算 → 採購發包 → 完工剪綵）；依老闆類型給 =====
   pledgeCount: 3,
