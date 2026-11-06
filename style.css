@@ -32,8 +32,10 @@ h2 { font-size: 21px; margin: 6px 0 10px; }
 /* 組閣 */
 .slot { margin: 14px 0; }
 .slot h3 { margin: 0 0 6px; font-size: 16px; }
-.picks { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.pick { border: 2px solid var(--line); background: #fff; border-radius: 14px; padding: 10px; text-align: left; font-size: 14px; cursor: pointer; color: var(--ink); }
+.picks { display: grid; grid-template-columns: 1fr; gap: 6px; }
+.legend summary { font-weight: 700; cursor: pointer; }
+.legend p { font-size: 13px; line-height: 1.5; margin: 6px 0; }
+.pick { border: 2px solid var(--line); background: #fff; border-radius: 12px; padding: 8px 10px; text-align: left; font-size: 14px; cursor: pointer; color: var(--ink); }
 .pick b { display: block; font-size: 15px; margin-bottom: 2px; }
 .pick small { color: var(--muted); line-height: 1.4; display: block; }
 .pick.on { border-color: var(--accent); background: #fff6df; }

@@ -15,25 +15,50 @@ function newRun(career, opts = {}) {
   const g = {
     career: career.id, turn: 1, turns: career.turns, rng,
     stats: {}, flags: {}, log: [], overflow: 0, blamed: 0, cabinet: {},
-    drawer: career.drawer.map(d => ({ id: d.id, size: d.look, real: d.real, open: !!d.start, known: false, done: false, shelved: 0, blocked: 0 })),
-    deck: career.events.filter(e => !e.final).map(e => e.id), used: [], pledges: []
+    drawer: [], staffers: {}, trait: null,
+    deck: career.events.filter(e => !e.final && !e.special).map(e => e.id), used: [], pledges: []
   };
   for (const s of career.stats) g.stats[s.id] = s.start;
   if (opts.carry) g.flags.carry = opts.carry;
-  const pool = career.pledges.slice();
+  g.bossType = opts.bossType || null;
+  // 每局只出現部分抽屜公文（連鎖關係照舊）
+  const ids = career.drawerSubset ? career.drawerSubset(rng) : career.drawer.map(d => d.id);
+  g.drawer = career.drawer.filter(d => ids.includes(d.id)).map(d => ({ id: d.id, size: d.look, real: d.real, open: !!d.start, known: false, done: false, shelved: 0, blocked: 0 }));
+  // 老闆的真面目：開局抽一張隱藏特質
+  if (career.traits) g.trait = weighted(rng, Object.entries(career.traits).map(([k, t]) => [k, t.weight]));
+  // 政見依老闆類型
+  const pool = (career.pledgesFor ? career.pledgesFor(g.bossType) : career.pledges).slice();
   const pick = opts.pledges || [];
   while (pick.length < career.pledgeCount && pool.length) { const p = pool.splice(Math.floor(rng() * pool.length), 1)[0]; if (!pick.includes(p.id)) pick.push(p.id); }
   g.pledges = pick.map(id => ({ id, step: 0, fails: 0 }));
   return g;
 }
+function weighted(rng, list) { const tot = list.reduce((a, [, w]) => a + w, 0); let x = rng() * tot; for (const [k, w] of list) { x -= w; if (x < 0) return k; } return list[list.length - 1][0]; }
 
 // ---------- 組閣 ----------
 // 每個職位從候選類型挑一個（loyal 自己人／pro 專業／holdover 前朝留任／acting 先代理）
-function appoint(career, g, slot, type) {
-  g.cabinet[slot] = type;
-  const t = career.cabinetTypes[type];
-  applyFx(career, g, t.fx || {});
-  g.log.push({ turn: 0, kind: 'cabinet', slot, type });
+// 每個職位從人才池抽 3 位候選人（來源不重複）
+function cabinetOffer(career, g, n = 3) {
+  const offer = {}, used = new Set();
+  for (const s of career.cabinet) {
+    const pool = career.candidates.filter(c => (!c.slots || c.slots.includes(s.id)) && !used.has(c.id));
+    const bySrc = {};
+    for (const c of pool) (bySrc[c.src] = bySrc[c.src] || []).push(c);
+    const srcs = Object.keys(bySrc).sort(() => g.rng() - 0.5).slice(0, n);
+    offer[s.id] = srcs.map(k => bySrc[k][Math.floor(g.rng() * bySrc[k].length)]);
+    offer[s.id].forEach(c => used.add(c.id)); // 同一個人不會同時出現在兩個職位
+  }
+  return offer;
+}
+// cand 可以是候選人物件，或直接給來源 id（模擬用）
+function appoint(career, g, slot, cand) {
+  if (typeof cand === 'string') cand = { id: cand, src: cand };
+  g.cabinet[slot] = cand.src; g.staffers[slot] = cand.id;
+  const t = career.cabinetTypes[cand.src];
+  applyFx(career, g, Object.assign({}, t.fx || {}));
+  if (cand.fx) applyFx(career, g, cand.fx);
+  for (const ev of t.events || []) if (!g.deck.includes(ev)) g.deck.push(ev);
+  g.log.push({ turn: 0, kind: 'cabinet', slot, src: cand.src, id: cand.id });
 }
 // 某份公文／某個政見步驟歸哪個職位管
 const slotOf = (career, key) => (career.cabinet.find(s => s.domain.includes(key)) || {}).id;
@@ -60,6 +85,9 @@ const ruleShift = (career, g) => g.turn >= career.shiftTurn;
 // ---------- 事件 ----------
 function drawEvent(career, g) {
   if (g.turn >= g.turns) return career.events.find(e => e.final);
+  // 老闆的真面目：中段用事件慢慢露出來
+  const tr = g.trait && career.traits[g.trait];
+  if (tr && tr.events) { const due = tr.events.find(([t]) => t === g.turn); if (due) return career.events.find(e => e.id === due[1]); }
   const boom = g.drawer.find(d => d.open && !d.done && d.real >= 5 && d.shelved >= 3);
   if (boom) { boom.done = true; boom.exploded = true; return career.boom(boom, g); }
   let pool = g.deck.filter(id => !g.used.includes(id));
@@ -109,14 +137,17 @@ function useDrawer(career, g, id, act) {
 function pledgeCheck(career, g, p) {
   const step = career.pledgeSteps[p.step];
   const block = (step.blockedBy || []).find(id => { const d = g.drawer.find(x => x.id === id); return d && d.open && !d.done; }); // 挖出來之後才會卡
-  return { step, block, cost: Math.round(step.cost * costMulFor(career, g, step.id) * (step.doubleIf && g.drawer.some(d => step.doubleIf.includes(d.id) && !d.done) ? 2 : 1)) };
+  const slot = slotOf(career, step.id), src = slot && career.cabinetTypes[g.cabinet[slot]];
+  let fail = step.failRate(g) + ((src && src.failAdj && src.failAdj[step.id]) || 0) + (career.failMod ? career.failMod(g, step) : 0);
+  fail = Math.max(0.03, Math.min(0.9, fail));
+  return { step, block, fail, cost: Math.round(step.cost * costMulFor(career, g, step.id) * (step.doubleIf && g.drawer.some(d => step.doubleIf.includes(d.id) && !d.done) ? 2 : 1)) };
 }
 function pushPledge(career, g, pid) {
   const p = g.pledges.find(x => x.id === pid), def = career.pledges.find(x => x.id === pid);
-  const { step, block, cost } = pledgeCheck(career, g, p);
+  const { step, block, cost, fail } = pledgeCheck(career, g, p);
   let fx = { budget: -cost }, ok = true, why = '';
   if (block) { ok = false; why = 'blocked:' + block; fx = Object.assign({}, step.failFx); }
-  else if (g.rng() < step.failRate(g)) { ok = false; why = 'fail'; fx = Object.assign({ budget: -Math.round(cost / 2) }, step.failFx); }
+  else if (g.rng() < fail) { ok = false; why = 'fail'; fx = Object.assign({ budget: -Math.round(cost / 2) }, step.failFx); }
   if (ok) { p.step++; if (p.step >= career.pledgeSteps.length) { p.done = true; Object.assign(fx, def.fx); } }
   else p.fails++;
   const hits = applyFx(career, g, fx);
@@ -134,16 +165,17 @@ function endTurn(career, g) {
   }
   if (career.onTurnEnd) applyFx(career, g, career.onTurnEnd(g) || {});
   g.turn++;
-  return g.turn > g.turns;
+  return g.turn > g.turns || !!g.flags.quit;
 }
 
 // ---------- 結局與存檔 ----------
-const tally = g => ({ drawer: g.drawer.filter(d => d.done && !d.exploded).length, open: g.drawer.filter(d => d.open && !d.done).length, pledges: g.pledges.filter(p => p.done).length });
+const tally = g => ({ drawer: g.drawer.filter(d => d.done && !d.exploded).length, total: g.drawer.length, open: g.drawer.filter(d => d.open && !d.done).length, pledges: g.pledges.filter(p => p.done).length });
 function ending(career, g) { return career.endings.find(e => e.when(g, tally(g))) || career.endings[career.endings.length - 1]; }
+function runTitle(career, g) { const t = tally(g); return (career.titles || []).find(x => x.when(g, t)) || null; }
 function seriesSave(career, g, end) {
-  return { part: career.part, career: career.id, ending: end.id, cabinet: Object.assign({}, g.cabinet), drawer: g.drawer.filter(d => d.done && !d.exploded).map(d => d.id), pledges: g.pledges.filter(p => p.done).map(p => p.id), blamed: g.blamed, stats: Object.assign({}, g.stats) };
+  return { part: career.part, career: career.id, ending: end.id, trait: g.trait, boss: g.flags.carry || null, cabinet: Object.assign({}, g.cabinet), staffers: Object.assign({}, g.staffers), drawer: g.drawer.filter(d => d.done && !d.exploded).map(d => d.id), pledges: g.pledges.filter(p => p.done).map(p => p.id), blamed: g.blamed, stats: Object.assign({}, g.stats) };
 }
 const encodeSave = o => btoa(unescape(encodeURIComponent(JSON.stringify(o))));
 const decodeSave = s => { try { return JSON.parse(decodeURIComponent(escape(atob(s.trim())))); } catch (e) { return null; } };
 
-if (typeof module !== 'undefined') module.exports = { makeRng, newRun, appoint, applyFx, drawEvent, chooseEvent, drawerCost, useDrawer, pledgeCheck, pushPledge, endTurn, tally, ending, ruleShift, seriesSave, encodeSave, decodeSave };
+if (typeof module !== 'undefined') module.exports = { makeRng, newRun, cabinetOffer, appoint, runTitle, applyFx, drawEvent, chooseEvent, drawerCost, useDrawer, pledgeCheck, pushPledge, endTurn, tally, ending, ruleShift, seriesSave, encodeSave, decodeSave };

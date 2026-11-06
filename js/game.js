@@ -12,9 +12,9 @@ function pickBoss() {
   try {
     const R = JSON.parse(localStorage.getItem('mymayor.records') || 'null');
     const won = R && R.runs && R.runs.slice().reverse().find(r => r.win);
-    if (won) return { name: won.boss, label: won.label, fromP1: true };
+    if (won) return { name: won.boss, label: won.label, type: won.type, fromP1: true };
   } catch (e) { /* 讀不到就隨機 */ }
-  return { name: BOSS_NAMES[Math.floor(Math.random() * BOSS_NAMES.length)], fromP1: false };
+  return { name: BOSS_NAMES[Math.floor(Math.random() * BOSS_NAMES.length)], type: 'ABCDEF'[Math.floor(Math.random() * 6)], fromP1: false };
 }
 
 // ---------- 小工具 ----------
@@ -54,7 +54,9 @@ function titleScreen() {
 // ---------- 勝選夜：只能高興一天 ----------
 function victoryNight() {
   BOSS = pickBoss();
-  G = newRun(C, { seed: Date.now() % 1e9, carry: BOSS.fromP1 ? { boss: BOSS.name } : null });
+  G = newRun(C, { seed: Date.now() % 1e9, bossType: BOSS.type, carry: BOSS.fromP1 ? { boss: BOSS.name, type: BOSS.type } : null });
+  const force = new URLSearchParams(location.search).get('trait'); // 測試用：?trait=corrupt
+  if (force && C.traits[force]) G.trait = force;
   show(`
     <div class="night">
       <div class="muted" style="color:#aaa">${T('11 月 28 日・晚上 10 點')}</div>
@@ -70,16 +72,17 @@ function victoryNight() {
 
 // ---------- 組閣 ----------
 function cabinetScreen() {
-  const picked = {};
+  const offer = cabinetOffer(C, G), picked = {};
   const render = () => {
     show(`
       <h2>${T('🗂️ 組閣：找人')}</h2>
-      <p class="muted">${T('就職前要先湊齊團隊。前任的人走了一半，剩下的不一定站你這邊。')}</p>
-      ${C.cabinet.map(s => `<div class="slot"><h3>${s.name}</h3><div class="picks">${Object.entries(C.cabinetTypes).map(([k, t]) => `<button class="pick ${picked[s.id] === k ? 'on' : ''}" data-s="${s.id}" data-k="${k}"><b>${t.emoji} ${t.name}</b><small>${t.desc}</small></button>`).join('')}</div></div>`).join('')}
+      <p class="muted">${T('就職前要湊齊團隊。前任的人走了一半，剩下的不一定站你這邊。每個位子挑一位：')}</p>
+      <details class="card legend"><summary>${T('📖 人選來源各有什麼取捨？')}</summary>${Object.values(C.cabinetTypes).map(t => `<p><b>${t.emoji} ${t.name}</b>：${t.desc}</p>`).join('')}</details>
+      ${C.cabinet.map(s => `<div class="slot"><h3>${s.name}</h3><div class="picks">${offer[s.id].map(c => { const t = C.cabinetTypes[c.src]; return `<button class="pick ${picked[s.id] === c.id ? 'on' : ''}" data-s="${s.id}" data-c="${c.id}"><b>${t.emoji} ${c.name} <span class="tag">${t.name}</span></b><small>${c.line}</small></button>`; }).join('')}</div></div>`).join('')}
       <div class="card"><b>${T('🔒 這幾位你換不掉')}</b><div class="locked">${C.lockedSlots.map(n => `<div>🔒 ${n}</div>`).join('')}</div><p class="muted" style="margin:8px 0 0">${T('依法不由市長任免。資深公務員也一樣：他們不會跟著前任走，也不會跟著你走。')}</p></div>
-      <button class="btn" id="go" ${Object.keys(picked).length < C.cabinet.length ? 'disabled' : ''}>${T('就職，上工 →')}</button>`);
-    app.querySelectorAll('.pick').forEach(b => b.onclick = () => { picked[b.dataset.s] = b.dataset.k; const y = window.scrollY; render(); window.scrollTo(0, y); });
-    $('#go').onclick = () => { for (const s of C.cabinet) appoint(C, G, s.id, picked[s.id]); turnStart(); };
+      <button class="btn" id="go" ${Object.keys(picked).length < C.cabinet.length ? 'disabled' : ''}>${Object.keys(picked).length < C.cabinet.length ? T('還有 {0} 個位子沒人', C.cabinet.length - Object.keys(picked).length) : T('就職，上工 →')}</button>`);
+    app.querySelectorAll('.pick').forEach(b => b.onclick = () => { picked[b.dataset.s] = b.dataset.c; const y = window.scrollY; render(); window.scrollTo(0, y); });
+    $('#go').onclick = () => { for (const s of C.cabinet) appoint(C, G, s.id, offer[s.id].find(c => c.id === picked[s.id])); turnStart(); };
   };
   render();
 }
@@ -89,15 +92,15 @@ function turnStart() {
   const ev = drawEvent(C, G);
   show(`${hud()}
     <div class="card ev">
-      ${ev.boom ? `<span class="tag red">${T('💥 擱置太久')}</span>` : ''}${ev.final ? `<span class="tag blue">${T('🎤 終局')}</span>` : ''}
+      ${ev.boom ? `<span class="tag red">${T('💥 擱置太久')}</span>` : ''}${ev.id.startsWith('tr_') && !ev.id.endsWith('_hint') ? `<span class="tag red">${T('😳 你開始懷疑老闆')}</span>` : ''}${ev.final ? `<span class="tag blue">${T('🎤 終局')}</span>` : ''}
       <h2>${ev.title}</h2><p>${ev.text}</p>
       ${ev.opts.map((o, i) => `<button class="opt" data-i="${i}">${o.t}</button>`).join('')}
     </div>`);
   app.querySelectorAll('.opt').forEach(b => b.onclick = () => {
     const r = chooseEvent(C, G, ev, +b.dataset.i);
     show(`${hud()}<div class="card ev"><h2>${ev.title}</h2><div class="res">${r.text}${fxHtml(r.fx)}</div>
-      <button class="btn" id="go">${ev.final ? T('看結局 →') : T('開始今天的工作 →')}</button></div>`);
-    $('#go').onclick = ev.final ? endingScreen : () => { actionsLeft = C.actionsPerTurn; workScreen(); };
+      <button class="btn" id="go">${ev.final || G.flags.quit ? T('看結局 →') : T('開始今天的工作 →')}</button></div>`);
+    $('#go').onclick = (ev.final || G.flags.quit) ? endingScreen : () => { actionsLeft = C.actionsPerTurn; workScreen(); };
   });
 }
 
@@ -179,7 +182,7 @@ function afterAction(msg) {
 
 // ---------- 結局 ----------
 function endingScreen() {
-  const e = ending(C, G), t = tally(G);
+  const e = ending(C, G), t = tally(G), ti = runTitle(C, G), tr = C.traits[G.trait];
   const save = seriesSave(C, G, e);
   try { const S = JSON.parse(localStorage.getItem(SERIES_KEY) || '{}'); S.p2 = save; localStorage.setItem(SERIES_KEY, JSON.stringify(S)); } catch (err) { /* 無痕模式就算了 */ }
   show(`<div class="ending">
@@ -187,7 +190,9 @@ function endingScreen() {
       <h2>${e.title}</h2>
       <p>${e.text}</p>
       <div class="card" style="text-align:left">
-        <div>🗄️ ${T('抽屜清掉：{0}／8 份', t.drawer)}</div>
+        <div>🏅 ${T('本局稱號：{0} {1}', ti.emoji, ti.name)}</div>
+        <div>${tr.emoji} ${T('老闆的真面目：{0}', tr.name)}</div>
+        <div>🗄️ ${T('抽屜清掉：{0}／{1} 份', t.drawer, t.total)}</div>
         <div>📣 ${T('政見兌現：{0}／{1} 張', t.pledges, G.pledges.length)}</div>
         <div>🫵 ${T('甩鍋給前任：{0} 次', G.blamed)}</div>
       </div>
