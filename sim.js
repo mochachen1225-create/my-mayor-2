@@ -13,13 +13,14 @@ function play(seed, strat) {
   while (true) {
     const ev = E.drawEvent(C, g);
     E.chooseEvent(C, g, ev, ev.final ? 0 : Math.floor(r() * ev.opts.length));
+    const tev = E.traitEvent(C, g); if (tev) E.chooseEvent(C, g, tev, Math.floor(r() * tev.opts.length));
     if (g.turn >= g.turns || g.flags.quit) break;
     for (let a = 0; a < C.actionsPerTurn; a++) {
       const open = g.drawer.filter(d => d.open && !d.done), pl = g.pledges.filter(p => !p.done);
       const doPledge = strat === 'random' ? r() < 0.5 : strat === 'pledger' ? pl.length > 0 : strat === 'drawer' ? !open.length : (open.length === 0 || (g.turn >= 4 && r() < 0.5));
       if (doPledge && pl.length) {
         const p = strat === 'random' ? pl[Math.floor(r() * pl.length)] : pl.slice().sort((x, y) => y.step - x.step).find(x => !E.pledgeCheck(C, g, x).block) || pl[0];
-        E.pushPledge(C, g, p.id); continue;
+        E.pushPledge(C, g, p.id, undefined, true); continue;
       }
       if (!open.length) continue;
       let d = open[Math.floor(r() * open.length)], act;

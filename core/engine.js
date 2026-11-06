@@ -42,13 +42,14 @@ function weighted(rng, list) { const tot = list.reduce((a, [, w]) => a + w, 0); 
 // 每個職位從候選類型挑一個（loyal 自己人／pro 專業／holdover 前朝留任／acting 先代理）
 // 每個職位從人才池抽 3 位候選人（來源不重複）
 function cabinetOffer(career, g, n = 3) {
-  const offer = {}, used = new Set();
+  const offer = {}, used = new Set(), srcCount = {};
   for (const s of career.cabinet) {
-    const pool = career.candidates.filter(c => (!c.slots || c.slots.includes(s.id)) && !used.has(c.id));
+    const pool = career.candidates.filter(c => (!c.fit || c.fit.includes(s.id) || c.src === 'acting') && !used.has(c.id)); // 只出現在對得上的位子
     const bySrc = {};
     for (const c of pool) (bySrc[c.src] = bySrc[c.src] || []).push(c);
     // 三位來自不同來源，另外固定有「先找人代理」
-    const srcs = Object.keys(bySrc).filter(k => k !== 'acting').sort(() => g.rng() - 0.5).slice(0, n);
+    const srcs = Object.keys(bySrc).filter(k => k !== 'acting' && (!career.maxPerSrc || !career.maxPerSrc[k] || (srcCount[k] || 0) < career.maxPerSrc[k])).sort(() => g.rng() - 0.5).slice(0, n);
+    srcs.forEach(k => { srcCount[k] = (srcCount[k] || 0) + 1; });
     offer[s.id] = srcs.map(k => bySrc[k][Math.floor(g.rng() * bySrc[k].length)]);
     const act = career.candidates.find(c => c.src === 'acting' && !c.dream);
     if (act) offer[s.id].push(Object.assign({}, act, { id: act.id + '_' + s.id }));
@@ -110,9 +111,6 @@ function drawEvent(career, g) {
   if (round && round.event) { const ev = career.events.find(e => e.id === round.event); if (ev && !g.used.includes(ev.id)) { g.used.push(ev.id); return ev; } }
   // 觸發型事件（例如出包後的「找人揹鍋」）
   if (career.triggered) { const id = career.triggered(g); if (id) return career.events.find(e => e.id === id); }
-  // 老闆的真面目：中段用事件慢慢露出來
-  const tr = g.trait && career.traits[g.trait];
-  if (tr && tr.events) { const due = tr.events.find(([t]) => t === g.turn); if (due) return career.events.find(e => e.id === due[1]); }
   const boom = g.drawer.find(d => d.open && !d.done && d.real >= 5 && d.shelved >= 3);
   if (boom) { boom.done = true; boom.exploded = true; g.flags.mess = (g.flags.mess || 0) + 1; return career.boom(boom, g); }
   let pool = g.deck.filter(id => !g.used.includes(id));
@@ -123,13 +121,41 @@ function drawEvent(career, g) {
 }
 // 延後出現的代價（灰色選項短期有用，代價晚一點才來）
 function schedule(g, later) { if (later) g.later.push({ at: g.turn + (later.in || 2), fx: later.fx || {}, text: later.text || '' }); }
+// 老闆的真面目：在該回合的事件之後，多一段小劇場
+function traitEvent(career, g) {
+  const tr = g.trait && career.traits[g.trait];
+  if (!tr || !tr.events) return null;
+  const due = tr.events.find(([t]) => t === g.turn);
+  if (!due || g.used.includes(due[1])) return null;
+  g.used.push(due[1]);
+  return career.events.find(e => e.id === due[1]);
+}
+// 「建議市長」：市長看信任和真面目決定 yes（照做）／half（打折做）／no（照他自己的意思）
+function advise(career, g) {
+  const p = career.adviseChance ? career.adviseChance(g) : 0.7;
+  const x = g.rng();
+  return x < p ? 'yes' : x < p + 0.15 ? 'half' : 'no';
+}
+const runFx = (career, g, op) => (typeof op.fx === 'function' ? op.fx(g, ruleShift(career, g)) : op.fx) || {};
 function chooseEvent(career, g, ev, i) {
-  const op = ev.opts[i];
-  const fx = typeof op.fx === 'function' ? op.fx(g, ruleShift(career, g)) : op.fx;
-  schedule(g, typeof op.later === 'function' ? op.later(g) : op.later);
+  let op = ev.opts[i], verdict = null, alt = null;
+  if (op.k === 'a') {
+    verdict = advise(career, g);
+    if (verdict === 'no') {
+      // 市長沒聽你的，照他自己的意思做（換成另一個「建議市長」的選項）
+      const others = ev.opts.filter((o, j) => j !== i && o.k === 'a');
+      alt = others.length ? others[Math.floor(g.rng() * others.length)] : null;
+    }
+  }
+  const use = alt || op;
+  let fx = Object.assign({}, runFx(career, g, use));
+  if (verdict === 'half') for (const k in fx) fx[k] = Math.round(fx[k] / 2);
+  if (verdict === 'no') fx.trust = (fx.trust || 0) - 2;
+  if (verdict === 'yes') fx.trust = (fx.trust || 0) + 1;
+  schedule(g, typeof use.later === 'function' ? use.later(g) : use.later);
   const hits = applyFx(career, g, fx);
-  g.log.push({ turn: g.turn, kind: 'event', id: ev.id, opt: i, fx });
-  return { fx, hits, text: typeof op.r === 'function' ? op.r(g) : op.r };
+  g.log.push({ turn: g.turn, kind: 'event', id: ev.id, opt: i, fx, verdict });
+  return { fx, hits, text: typeof use.r === 'function' ? use.r(g) : use.r, verdict, alt: alt && alt.t };
 }
 
 // ---------- 抽屜 ----------
@@ -139,11 +165,18 @@ function openChain(career, g, d) {
   for (const nid of def.chain || []) { const n = g.drawer.find(x => x.id === nid); if (n && !n.open) { n.open = true; opened.push(nid); } }
   return opened;
 }
+// 「處理掉」和「說是前任的」要市長拍板（建議市長）；調查、走後門是你自己做
+const ADVISE_ACTS = ['do', 'blame'];
 function useDrawer(career, g, id, act) {
   const d = g.drawer.find(x => x.id === id), def = career.drawer.find(x => x.id === id);
   let fx = {}, opened = [], note = '';
+  let verdict = null;
+  if (ADVISE_ACTS.includes(act) && career.adviseChance) {
+    verdict = advise(career, g);
+    if (verdict === 'no') { const f = { trust: -1, stress: 2 }; applyFx(career, g, f); g.log.push({ turn: g.turn, kind: 'drawer', id, act, verdict }); return { fx: f, hits: [], opened: [], note: 'no', verdict }; }
+  }
   if (act === 'do') {
-    fx = Object.assign({ budget: -drawerCost(career, g, d), staff: -2 }, def.fx);
+    fx = Object.assign({ budget: -Math.round(drawerCost(career, g, d) * (verdict === 'half' ? 1.3 : 1)), staff: -2 }, def.fx);
     // 自己人第一次處理自己領域的公文會出包
     const slot = slotOf(career, d.id);
     if (slot && g.cabinet[slot] === 'loyal' && !g.flags['oops_' + slot]) { g.flags['oops_' + slot] = 1; fx.pop = (fx.pop || 0) - 4; note = 'oops'; }
@@ -162,8 +195,8 @@ function useDrawer(career, g, id, act) {
     fx = ruleShift(career, g) ? career.blameLate : career.blameEarly;
   }
   const hits = applyFx(career, g, fx);
-  g.log.push({ turn: g.turn, kind: 'drawer', id, act, fx });
-  return { fx, hits, opened, note };
+  g.log.push({ turn: g.turn, kind: 'drawer', id, act, fx, verdict });
+  return { fx, hits, opened, note, verdict };
 }
 
 // ---------- 政見 ----------
@@ -176,7 +209,12 @@ function pledgeCheck(career, g, p) {
   fail = Math.max(0.03, Math.min(0.9, fail));
   return { step, block, fail, cost: Math.round(step.cost * costMulFor(career, g, step.id) * (step.doubleIf && g.drawer.some(d => step.doubleIf.includes(d.id) && !d.done) ? 2 : 1)) };
 }
-function pushPledge(career, g, pid, forced) {
+function pushPledge(career, g, pid, forced, viaAdvice) {
+  if (viaAdvice && career.adviseChance && advise(career, g) === 'no') {
+    const p0 = g.pledges.find(x => x.id === pid), st = career.pledgeSteps[p0.step], f = { trust: -1 };
+    applyFx(career, g, f);
+    return { ok: false, why: 'mayor', step: st, fx: f, hits: [] };
+  }
   const p = g.pledges.find(x => x.id === pid), def = career.pledges.find(x => x.id === pid);
   const { step, block, cost, fail } = pledgeCheck(career, g, p);
   let fx = { budget: -cost }, ok = true, why = '';
@@ -228,4 +266,4 @@ function seriesSave(career, g, end) {
 const encodeSave = o => btoa(unescape(encodeURIComponent(JSON.stringify(o))));
 const decodeSave = s => { try { return JSON.parse(decodeURIComponent(escape(atob(s.trim())))); } catch (e) { return null; } };
 
-if (typeof module !== 'undefined') module.exports = { pushPledgeGray, schedule, makeRng, newRun, cabinetOffer, appoint, runTitle, applyFx, drawEvent, chooseEvent, drawerCost, useDrawer, pledgeCheck, pushPledge, endTurn, tally, ending, ruleShift, seriesSave, encodeSave, decodeSave };
+if (typeof module !== 'undefined') module.exports = { traitEvent, advise, pushPledgeGray, schedule, makeRng, newRun, cabinetOffer, appoint, runTitle, applyFx, drawEvent, chooseEvent, drawerCost, useDrawer, pledgeCheck, pushPledge, endTurn, tally, ending, ruleShift, seriesSave, encodeSave, decodeSave };

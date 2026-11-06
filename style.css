@@ -158,3 +158,11 @@ h2 { font-size: 21px; margin: 6px 0 10px; }
 .pick.dream { border-color: #e0a526; background: #fffaf0; }
 .stat.key { font-weight: 800; font-size: 13px; }
 .stat.key .bar { height: 9px; }
+.kind { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 6px; margin-right: 6px; vertical-align: 1px; }
+.kind.ka { background: #e3e9f7; color: #33508f; }
+.kind.ks { background: #fff1d6; color: #8a5a00; }
+.verdict { border-radius: 10px; padding: 8px 10px; margin: 8px 0; font-size: 14px; }
+.verdict.yes { background: #e5f5ea; }
+.verdict.half { background: #fff6df; }
+.verdict.no { background: #fbe0dc; }
+.verdict b { display: block; margin-top: 2px; }

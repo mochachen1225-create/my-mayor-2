@@ -164,9 +164,9 @@ function cabinetScreen() {
   const intro = () => {
     show(`<div class="hud"><div class="step">👉 ${T('看完按下面，開始推薦人選')}</div></div>
       <h2>${T('🗂️ 市長請你推薦人選')}</h2>
-      <div class="card intro"><p>${T('{0}：「全市 30 多個局處，我們沒時間一個一個挑。先補最急的四個，你幫我找人，我來決定。」', esc(BOSS.name))}</p>
+      <div class="card intro"><p>${T('全市 30 多個局處，老闆沒時間一個一個面試。他請你幫忙整理名單、先篩一輪：每個位子挑一位你覺得最適合的，推薦給他決定。主計、人事、警察、政風四位，依法不是市長自己換的。')}</p>
       ${C.cabinet.map(s => `<p><b>${s.name}</b>：${s.why}</p>`).join('')}
-      <p class="muted">${T('🔒 主計、人事、警察、政風四位，依法不是市長自己換的。')}</p></div>
+</div>
       <details class="card legend"><summary>${T('📖 各種人選來源的取捨')}</summary>${Object.values(C.cabinetTypes).map(t => `<p><b>${t.emoji} ${t.name}</b>：${t.desc}</p>`).join('')}</details>
       <button class="btn" id="go">${T('開始推薦 →')}</button>`);
     $('#go').onclick = () => slotScreen();
@@ -212,23 +212,34 @@ function cabinetScreen() {
 }
 
 // ---------- 回合開始：事件（第 3 回合是蓋章小遊戲）----------
+const KIND = { a: T('💬 建議市長'), s: T('✋ 你自己處理') };
+const VERDICT = { yes: T('市長照你的建議做了。'), half: T('市長聽了，但打了折扣。'), no: T('市長沒聽你的，照他自己的意思做：') };
 function turnStart() {
   if (G.turn === G.turns && !G.flags.pressDone) { G.flags.pressDone = 1; return pressGame(turnStart); }
-  if (G.turn === 3 && !G.flags.stampDone) { G.flags.stampDone = 1; return stampGame(() => { actionsLeft = C.actionsPerTurn; workScreen(); }); }
-  const ev = drawEvent(C, G);
+  if (G.turn === 3 && !G.flags.stampDone) { G.flags.stampDone = 1; return stampGame(afterEvents); }
+  showEvent(drawEvent(C, G), afterEvents);
+}
+// 這回合的事件處理完：如果老闆的真面目到了該露出來的時候，多一段小劇場
+function afterEvents() {
+  const tev = traitEvent(C, G);
+  if (tev) return showEvent(tev, afterEvents);
+  actionsLeft = C.actionsPerTurn; workScreen();
+}
+function showEvent(ev, then) {
   const tag = ev.boom ? `<span class="tag red">${T('💥 擱置太久')}</span>` : ev.final ? `<span class="tag blue">${T('🗳️ 終局')}</span>` : (ev.id.startsWith('tr_') && !ev.id.endsWith('_hint')) ? `<span class="tag red">${T('😳 老闆的真面目')}</span>` : ev.id.endsWith('_hint') ? `<span class="tag">${T('🤔 有點怪')}</span>` : '';
-  show(`${guide(T('先處理這件事：點一個選項'))}
+  show(`${guide(T('點一個選項。💬 是建議市長（他不一定聽）；✋ 是你自己能做的'))}
     <div class="card ev">${tag}<h2>${ev.title}</h2><p>${txt(ev.text)}</p>
-      ${ev.opts.map((o, i) => `<button class="opt" data-i="${i}">${o.t}</button>`).join('')}
+      ${ev.opts.map((o, i) => `<button class="opt" data-i="${i}"><span class="kind ${o.k === 'a' ? 'ka' : 'ks'}">${KIND[o.k || 's']}</span>${o.t}</button>`).join('')}
     </div>`);
   app.querySelectorAll('.opt').forEach(b => b.onclick = () => {
     const r = chooseEvent(C, G, ev, +b.dataset.i);
     const end = ev.final || G.flags.quit;
-    show(`${guide(end ? T('按下面看結局') : T('看完按下面，開始做事'))}
-      <div class="card ev"><h2>${ev.title}</h2><div class="res">${txt(r.text)}${fxHtml(r.fx)}</div></div>
+    const v = r.verdict ? `<div class="verdict ${r.verdict}">💬 ${VERDICT[r.verdict]}${r.verdict === 'no' && r.alt ? `<b>${r.alt}</b>` : ''}</div>` : '';
+    show(`${guide(end ? T('按下面看結局') : T('看完按下面繼續'))}
+      <div class="card ev"><h2>${ev.title}</h2>${v}<div class="res">${txt(r.text)}${fxHtml(r.fx)}</div></div>
       ${end ? '' : crisp(moodOf(r.fx))}
-      <button class="btn" id="go">${end ? T('看結局 →') : T('開始做事（2 件）→')}</button>`);
-    $('#go').onclick = end ? endingScreen : () => { actionsLeft = C.actionsPerTurn; workScreen(); };
+      <button class="btn" id="go">${end ? T('看結局 →') : T('繼續 →')}</button>`);
+    $('#go').onclick = end ? endingScreen : then;
   });
 }
 
@@ -268,17 +279,18 @@ function drawerSheet(id) {
     if (id === 'C' && a !== 'blame' && !G.flags.attachDone) { G.flags.attachDone = 1; return attachGame(found => { const extra = found ? { staff: 3 } : { staff: -2 }; applyFx(C, G, extra); const r = useDrawer(C, G, id, a); const res = C.attachments[Math.floor(Math.random() * C.attachments.length)]; afterAction(`<b>${def.title}</b><br>${found ? T('找到附件了！') : T('時間到，最後是工讀生找到的。')}<br>📎 ${res}` + fxHtml(Object.assign({}, r.fx, extra)), r.fx, 'reveal', r.opened); }); }
     const r = useDrawer(C, G, id, a);
     let m = `<b>${def.title}</b><br>`;
-    if (a === 'do') m += T('處理好了。') + (r.note === 'oops' ? T('（自己人第一次出手，流程走錯，被記者抓到。）') : '');
+    if (r.verdict === 'no') m += T('💬 市長看了你的建議：「再等等。」這件事這次沒動。');
+    else if (a === 'do') m += (r.verdict === 'half' ? T('💬 市長同意了，但要求「穩一點」，多花了一些錢。') : T('💬 市長拍板，處理好了。')) + (r.note === 'oops' ? T('（自己人第一次出手，流程走錯，被記者抓到。）') : '');
     if (a === 'look') m += T('調查完了，真正的大小是 {0}。', SIZE(d.real));
     if (a === 'shortcut') m += T('打了幾通電話，事情一個下午就搞定了。沒有人問是怎麼辦到的。');
-    if (a === 'blame') m += late ? T('「都上任多久了還怪前任？」') : T('「這是前任留下來的。」大家點頭。');
+    if (a === 'blame' && r.verdict !== 'no') m += late ? T('「都上任多久了還怪前任？」') : T('「這是前任留下來的。」大家點頭。');
     afterAction(m + fxHtml(r.fx), r.fx, a === 'blame' ? 'blame' : moodOf(r.fx), r.opened);
   };
   sheet(head, def.text, [
-    { t: T('🛠️ 處理掉'), d: d.blocked ? T('另一件事剛用掉這筆錢，下回合再說') : T('預算 −{0}{1}', drawerCost(C, G, d), d.costMul > 1 ? T('（預算被搶走一部分，變貴了）') : ''), off: !!d.blocked, go: act('do') },
-    { t: T('🚪 走後門，找人喬'), d: T('預算 −{0}，立刻搞定；清白會掉，代價晚點來', Math.round(drawerCost(C, G, d) / 2)), go: act('shortcut') },
-    { t: T('🔍 先調查'), d: d.known ? T('已經知道真正多大了') : T('不花錢，看清楚真正有多大'), go: act('look') },
-    { t: T('🫵 甩鍋給前任'), d: d.own ? T('這是你們自己的，沒辦法甩') : late ? T('百日過了，現在甩會被罵') : T('民意 +，但事情還在'), off: !!d.own, go: act('blame') }
+    { t: `<span class="kind ka">${KIND.a}</span>` + T('建議市長拍板處理'), d: d.blocked ? T('另一件事剛用掉這筆錢，下回合再說') : T('預算 −{0}{1}', drawerCost(C, G, d), d.costMul > 1 ? T('（預算被搶走一部分，變貴了）') : ''), off: !!d.blocked, go: act('do') },
+    { t: `<span class="kind ks">${KIND.s}</span>` + T('你私下去喬（走後門）'), d: T('預算 −{0}，立刻搞定；清白會掉，代價晚點來', Math.round(drawerCost(C, G, d) / 2)), go: act('shortcut') },
+    { t: `<span class="kind ks">${KIND.s}</span>` + T('你先調查清楚'), d: d.known ? T('已經知道真正多大了') : T('不花錢，看清楚真正有多大'), go: act('look') },
+    { t: `<span class="kind ka">${KIND.a}</span>` + T('建議市長說是前任的'), d: d.own ? T('這是你們自己的，沒辦法甩') : late ? T('百日過了，現在甩會被罵') : T('民意 +，但事情還在'), off: !!d.own, go: act('blame') }
   ]);
 }
 function pledgeSheet(pid) {
@@ -288,15 +300,16 @@ function pledgeSheet(pid) {
   const ribbon = chk.step.id === 'ribbon';
   sheet(`<span class="tag blue">${T('📣 政見')}</span><h2>${def.emoji} ${def.name}</h2>${steps}`,
     chk.block ? T('⛔ 主計處長：「{0}」沒處理之前，這筆預算依法不能編。', C.drawer.find(x => x.id === chk.block).title) : ribbon ? T('完工了！里長們都到了，就等剪綵。') : T('下一步：{0}。', chk.step.name),
-    [{ t: ribbon ? T('✂️ 去剪綵（小遊戲）') : T('📣 推動「{0}」', chk.step.name), d: chk.block ? T('會被退回') : (chk.cost ? T('預算 −{0}・', chk.cost) : '') + T('可能失敗（約 {0}%）', Math.round(chk.fail * 100)), go: () => {
+    [{ t: ribbon ? `<span class="kind ka">${KIND.a}</span>` + T('安排市長去剪綵（小遊戲）') : `<span class="kind ka">${KIND.a}</span>` + T('建議市長推動「{0}」', chk.step.name), d: chk.block ? T('會被退回') : (chk.cost ? T('預算 −{0}・', chk.cost) : '') + T('可能失敗（約 {0}%）', Math.round(chk.fail * 100)), go: () => {
       if (ribbon) return ribbonGame(ok => { const r = pushPledge(C, G, pid, ok); afterAction(`<b>${def.emoji} ${def.name}</b><br>${ok ? T('✂️ 剪得漂亮！政見兌現。') : T('剪歪了，里長們笑成一團。下次再剪。')}` + fxHtml(r.fx), r.fx, ok ? 'pledge' : 'down'); });
-      const r = pushPledge(C, G, pid);
+      const r = pushPledge(C, G, pid, undefined, true);
       let m = `<b>${def.emoji} ${def.name}：${r.step.name}</b><br>`;
-      if (r.ok) m += T('過關了！');
+      if (r.why === 'mayor') m += T('💬 市長說：「這個先放一下。」');
+      else if (r.ok) m += T('過關了！');
       else if (r.why === 'fail') m += r.step.id === 'tender' ? T('流標了，沒有廠商來投標。') : T('議會把預算刪了，要你「再研議」。');
       else m += T('被退回：要先處理「{0}」。', C.drawer.find(x => x.id === r.why.split(':')[1]).title);
       afterAction(m + fxHtml(r.fx), r.fx, r.ok ? 'pledge' : 'down');
-    } }, { t: C.pledgeGray[chk.step.id].name, d: chk.block ? T('主計卡著，喬也沒用') : T('這一步一定過；清白會掉，代價晚點來'), off: !!chk.block, go: () => {
+    } }, { t: `<span class="kind ks">${KIND.s}</span>` + C.pledgeGray[chk.step.id].name.replace(/^\S+ /, ''), d: chk.block ? T('主計卡著，喬也沒用') : T('這一步一定過；清白會掉，代價晚點來'), off: !!chk.block, go: () => {
       const r = pushPledgeGray(C, G, pid);
       afterAction(`<b>${def.emoji} ${def.name}：${r.step.name}</b><br>${T('事情突然變得很順利。')}` + fxHtml(r.fx), r.fx, 'up');
     } }]);
