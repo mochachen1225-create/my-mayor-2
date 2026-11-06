@@ -89,6 +89,9 @@ function setupScreen() {
       const name = $('#nm').value.trim() || NAMES[g][Math.floor(Math.random() * 6)];
       const type = w && w.boss === name && w.type ? w.type : 'ABCDEF'[Math.floor(Math.random() * 6)];
       BOSS = { name, gender: g, type, fromP1: !!(w && w.boss === name) };
+      G = newRun(C, { seed: Date.now() % 1e9, bossType: BOSS.type, carry: BOSS.fromP1 ? { boss: BOSS.name, type: BOSS.type } : null });
+      const force = new URLSearchParams(location.search).get('trait'); // 測試用：?trait=corrupt
+      if (force && C.traits[force]) G.trait = force;
       introScreen();
     };
   };
@@ -107,15 +110,14 @@ function introScreen() {
       <p>🏆 ${T('<b>怎麼算贏</b>：連任前夕，爛攤子收得差不多、政見至少兌現 2 個、數值沒有爆掉。數值太低、太高都會出事。')}</p>
       <p>😳 ${T('還有一件事：老闆是什麼樣的人，你上任之後才會知道。')}</p>
     </div>
+    <div class="card intro"><b>${T('🏛️ 這一屆的議會')}：${C.councils[G.council].emoji} ${C.councils[G.council].name}</b>
+      <p>${C.councils[G.council].desc}</p><p class="muted">${C.speakers[G.speaker]}</p></div>
     <button class="btn" id="go">${T('懂了，去勝選晚會 →')}</button>`);
   $('#go').onclick = victoryNight;
 }
 
 // ---------- 勝選夜：只能高興一天 ----------
 function victoryNight() {
-  G = newRun(C, { seed: Date.now() % 1e9, bossType: BOSS.type, carry: BOSS.fromP1 ? { boss: BOSS.name, type: BOSS.type } : null });
-  const force = new URLSearchParams(location.search).get('trait'); // 測試用：?trait=corrupt
-  if (force && C.traits[force]) G.trait = force;
   show(`
     <div class="night">
       <div class="muted" style="color:#aaa">${T('選舉當晚・10 點')}</div>
@@ -137,8 +139,9 @@ function cabinetScreen() {
     show(`
       <div class="hud"><div class="step">👉 ${left ? T('每個位子點一位人選（還有 {0} 個位子）', left) : T('都選好了，按最下面「就職」')}</div></div>
       <h2>${T('🗂️ 組閣：找人')}</h2>
+      <p class="muted">${T('全市 30 多個局處，你沒時間一個一個挑。先補最急的四個；主計、人事、警察、政風四位，依法不是市長自己換的。')}</p>
       <details class="card legend"><summary>${T('📖 人選來源各有什麼取捨？')}</summary>${Object.values(C.cabinetTypes).map(t => `<p><b>${t.emoji} ${t.name}</b>：${t.desc}</p>`).join('')}</details>
-      ${C.cabinet.map(s => `<div class="slot"><h3>${s.name}${picked[s.id] ? ' ✅' : ''}</h3><div class="picks">${offer[s.id].map(c => { const t = C.cabinetTypes[c.src]; return `<button class="pick ${picked[s.id] === c.id ? 'on' : ''}" data-s="${s.id}" data-c="${c.id}"><b>${t.emoji} ${c.name} <span class="tag">${t.name}</span></b><small>${c.line}</small></button>`; }).join('')}</div></div>`).join('')}
+      ${C.cabinet.map(s => `<div class="slot"><h3>${s.name}${picked[s.id] ? ' ✅' : ''}<small class="why">${s.why}</small></h3><p class="hits">${s.hits}<br>${T('人才庫裡願意接這個燙手山芋的：{0}各推了一位，或先找人代理。', offer[s.id].filter(c => c.src !== 'acting').map(c => C.cabinetTypes[c.src].name).join('、'))}</p><div class="picks">${offer[s.id].map(c => { const t = C.cabinetTypes[c.src]; return `<button class="pick ${picked[s.id] === c.id ? 'on' : ''}" data-s="${s.id}" data-c="${c.id}"><b>${t.emoji} ${c.name} <span class="tag">${t.name}</span></b><small>${c.line}</small></button>`; }).join('')}</div></div>`).join('')}
       <div class="card"><b>${T('🔒 這幾位你換不掉')}</b><div class="locked">${C.lockedSlots.map(n => `<div>🔒 ${n}</div>`).join('')}</div><p class="muted" style="margin:8px 0 0">${T('依法不由市長任免。資深公務員也一樣：他們不會跟著前任走，也不會跟著你走。')}</p></div>
       <button class="btn" id="go" ${left ? 'disabled' : ''}>${left ? T('還有 {0} 個位子沒人', left) : T('就職，上工 →')}</button>`);
     app.querySelectorAll('.pick').forEach(b => b.onclick = () => { picked[b.dataset.s] = b.dataset.c; const y = window.scrollY; render(); window.scrollTo(0, y); });
@@ -198,6 +201,7 @@ function drawerSheet(id) {
   const late = ruleShift(C, G);
   const head = `${d.own ? `<span class="tag">${T('🧾 你們自己的')}</span>` : `<span class="tag">${T('🗄️ 前任留下的')}</span>`}${d.shelved >= 2 ? `<span class="tag red">${T('放了 {0} 回合，越來越大', d.shelved)}</span>` : ''}<h2>${def.title}</h2>`;
   const act = a => () => {
+    if (id === 'A' && a !== 'blame' && !G.flags.attachDone) { G.flags.attachDone = 1; return attachGame(found => { const extra = found ? { staff: 3 } : { staff: -2 }; applyFx(C, G, extra); const r = useDrawer(C, G, id, a); const res = C.attachments[Math.floor(Math.random() * C.attachments.length)]; afterAction(`<b>${def.title}</b><br>${found ? T('找到附件了！') : T('時間到，最後是工讀生找到的。')}<br>📎 ${res}` + fxHtml(Object.assign({}, r.fx, extra)), r.fx, 'reveal', r.opened); }); }
     const r = useDrawer(C, G, id, a);
     let m = `<b>${def.title}</b><br>`;
     if (a === 'do') m += T('處理好了。') + (r.note === 'oops' ? T('（自己人第一次出手，流程走錯，被記者抓到。）') : '');
@@ -257,7 +261,7 @@ function nightScreen() {
 const LEVELS = [T('承辦'), T('科長'), T('局長'), T('市長')];
 function stampGame(done) {
   show(`${guide(T('小遊戲：照順序往上蓋章'))}
-    <div class="card ev"><h2>${T('🖋️ 公文旅行：蓋章大作戰')}</h2>
+    <div class="card ev"><h2>${T('🖋️ 蓋章大作戰')}</h2>
     <p>${T('一份公文要照<b>分層負責</b>由下往上蓋：承辦 → 科長 → 局長 → 市長。蓋到右上角寫的「決行層級」就改蓋<b>決行</b>章。標了「會辦政風」的，決行前要先蓋政風。蓋錯就退回重跑。10 秒，能蓋完幾份？')}</p>
     <button class="btn" id="go">${T('開始蓋章！')}</button></div>`);
   $('#go').onclick = () => {
@@ -295,6 +299,20 @@ function stampGame(done) {
       } else { const c = $('#clock'); if (c) c.textContent = `⏱ ${(10 - (Date.now() - t0) / 1000).toFixed(1)}s　✅ ${T('已決行 {0} 份', doneN)}`; }
     }, 100);
   };
+}
+
+// ---------- 小遊戲：找附件（翻檔案夾）----------
+function attachGame(done) {
+  const N = 12, hit = Math.floor(Math.random() * N), t0 = Date.now();
+  const labels = [T('第 12 頁'), T('第 45 頁'), T('第 99 頁'), T('第 150 頁'), T('第 201 頁'), T('第 233 頁'), T('第 256 頁'), T('第 270 頁'), T('第 281 頁'), T('第 293 頁'), T('第 298 頁'), T('第 300 頁')];
+  show(`${guide(T('小遊戲：8 秒內翻到「附件」'))}
+    <div class="card ev"><h2>${T('📂 找附件')}</h2><p>${T('交接清冊第 287 頁寫著「詳見附件」。附件夾在某一頁裡，翻翻看！')}</p>
+    <div class="files">${labels.map((l, i) => `<button data-i="${i}">📁<small>${l}</small></button>`).join('')}</div>
+    <p class="muted center" id="clock">⏱ 8.0s</p></div>`);
+  let over = false;
+  const finish = ok => { if (over) return; over = true; clearInterval(tm); setTimeout(() => done(ok), ok ? 500 : 200); };
+  app.querySelectorAll('.files button').forEach(b => b.onclick = () => { if (over) return; if (+b.dataset.i === hit) { b.innerHTML = '📎<small>' + T('附件！') + '</small>'; b.classList.add('ok'); finish(true); } else { b.innerHTML = '🗒️<small>' + T('不是') + '</small>'; b.disabled = true; } });
+  const tm = setInterval(() => { const left = 8 - (Date.now() - t0) / 1000; const c = $('#clock'); if (c) c.textContent = `⏱ ${Math.max(0, left).toFixed(1)}s`; if (left <= 0) finish(false); }, 100);
 }
 
 // ---------- 小遊戲：剪綵（抓時機）----------

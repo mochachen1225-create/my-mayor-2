@@ -24,6 +24,9 @@ function newRun(career, opts = {}) {
   // 每局只出現部分抽屜公文（連鎖關係照舊）
   const ids = career.drawerSubset ? career.drawerSubset(rng) : career.drawer.map(d => d.id);
   g.drawer = career.drawer.filter(d => ids.includes(d.id)).map(d => ({ id: d.id, size: d.look, real: d.real, open: !!d.start, known: false, done: false, shelved: 0, blocked: 0 }));
+  // 開局隨機的議會生態
+  if (career.councils) { const ks = Object.keys(career.councils); g.council = ks[Math.floor(rng() * ks.length)]; applyFx(career, g, career.councils[g.council].fx || {}); }
+  if (career.speakers) g.speaker = Math.floor(rng() * career.speakers.length);
   // 老闆的真面目：開局抽一張隱藏特質
   if (career.traits) g.trait = weighted(rng, Object.entries(career.traits).map(([k, t]) => [k, t.weight]));
   // 政見依老闆類型
@@ -44,9 +47,12 @@ function cabinetOffer(career, g, n = 3) {
     const pool = career.candidates.filter(c => (!c.slots || c.slots.includes(s.id)) && !used.has(c.id));
     const bySrc = {};
     for (const c of pool) (bySrc[c.src] = bySrc[c.src] || []).push(c);
-    const srcs = Object.keys(bySrc).sort(() => g.rng() - 0.5).slice(0, n);
+    // 三位來自不同來源，另外固定有「先找人代理」
+    const srcs = Object.keys(bySrc).filter(k => k !== 'acting').sort(() => g.rng() - 0.5).slice(0, n);
     offer[s.id] = srcs.map(k => bySrc[k][Math.floor(g.rng() * bySrc[k].length)]);
-    offer[s.id].forEach(c => used.add(c.id)); // 同一個人不會同時出現在兩個職位
+    const act = career.candidates.find(c => c.src === 'acting');
+    if (act) offer[s.id].push(Object.assign({}, act, { id: act.id + '_' + s.id }));
+    offer[s.id].forEach(c => { if (c.src !== 'acting') used.add(c.id); }); // 同一個人不會同時出現在兩個職位
   }
   return offer;
 }
@@ -181,7 +187,7 @@ const tally = g => ({ drawer: g.drawer.filter(d => d.done && !d.exploded).length
 function ending(career, g) { return career.endings.find(e => e.when(g, tally(g))) || career.endings[career.endings.length - 1]; }
 function runTitle(career, g) { const t = tally(g); return (career.titles || []).find(x => x.when(g, t)) || null; }
 function seriesSave(career, g, end) {
-  return { part: career.part, career: career.id, ending: end.id, trait: g.trait, boss: g.flags.carry || null, cabinet: Object.assign({}, g.cabinet), staffers: Object.assign({}, g.staffers), drawer: g.drawer.filter(d => d.done && !d.exploded).map(d => d.id), pledges: g.pledges.filter(p => p.done).map(p => p.id), blamed: g.blamed, stats: Object.assign({}, g.stats) };
+  return { part: career.part, career: career.id, ending: end.id, trait: g.trait, council: g.council, title: (runTitle(career, g) || {}).id, boss: g.flags.carry || null, cabinet: Object.assign({}, g.cabinet), staffers: Object.assign({}, g.staffers), drawer: g.drawer.filter(d => d.done && !d.exploded).map(d => d.id), pledges: g.pledges.filter(p => p.done).map(p => p.id), blamed: g.blamed, stats: Object.assign({}, g.stats) };
 }
 const encodeSave = o => btoa(unescape(encodeURIComponent(JSON.stringify(o))));
 const decodeSave = s => { try { return JSON.parse(decodeURIComponent(escape(atob(s.trim())))); } catch (e) { return null; } };
