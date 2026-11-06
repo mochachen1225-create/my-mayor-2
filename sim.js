@@ -4,10 +4,15 @@ const TYPES = Object.keys(C.cabinetTypes);
 function play(seed, strat) {
   const g = E.newRun(C, { seed }); const r = E.makeRng(seed * 7 + 1);
   const offer = E.cabinetOffer(C, g);
-  for (const s of C.cabinet) { const o = offer[s.id]; E.appoint(C, g, s.id, strat === 'random' ? o[Math.floor(r() * o.length)] : (o.find(c => c.src === 'scholar' || c.src === 'business') || o.find(c => c.src !== 'acting') || o[0])); }
+  for (const s of C.cabinet) {
+    const o = offer[s.id];
+    const want = strat === 'random' ? o[Math.floor(r() * o.length)] : (o.find(c => c.fit && c.fit.includes(s.id) && c.src !== 'acting') || o.find(c => c.src !== 'acting') || o[0]);
+    const res = C.recommend(g, s.id, want, o);
+    E.appoint(C, g, s.id, res.ok ? want : Object.assign({}, res.pick, { byYou: false }));
+  }
   while (true) {
     const ev = E.drawEvent(C, g);
-    E.chooseEvent(C, g, ev, Math.floor(r() * ev.opts.length));
+    E.chooseEvent(C, g, ev, ev.final ? 0 : Math.floor(r() * ev.opts.length));
     if (g.turn >= g.turns || g.flags.quit) break;
     for (let a = 0; a < C.actionsPerTurn; a++) {
       const open = g.drawer.filter(d => d.open && !d.done), pl = g.pledges.filter(p => !p.done);

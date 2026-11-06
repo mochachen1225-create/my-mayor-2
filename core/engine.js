@@ -50,9 +50,16 @@ function cabinetOffer(career, g, n = 3) {
     // 三位來自不同來源，另外固定有「先找人代理」
     const srcs = Object.keys(bySrc).filter(k => k !== 'acting').sort(() => g.rng() - 0.5).slice(0, n);
     offer[s.id] = srcs.map(k => bySrc[k][Math.floor(g.rng() * bySrc[k].length)]);
-    const act = career.candidates.find(c => c.src === 'acting');
+    const act = career.candidates.find(c => c.src === 'acting' && !c.dream);
     if (act) offer[s.id].push(Object.assign({}, act, { id: act.id + '_' + s.id }));
     offer[s.id].forEach(c => { if (c.src !== 'acting') used.add(c.id); }); // 同一個人不會同時出現在兩個職位
+  }
+  // 每局至少一位「夢幻人選但有條件」
+  const dreams = career.candidates.filter(c => c.dream && c.fit.some(f => offer[f]));
+  if (dreams.length && !Object.values(offer).flat().some(c => c.dream)) {
+    const d = dreams[Math.floor(g.rng() * dreams.length)], slot = d.fit[0], list = offer[slot];
+    const k = list.findIndex(c => c.src === d.src && c.src !== 'acting'); const at = k >= 0 ? k : 0;
+    list[at] = d;
   }
   return offer;
 }
@@ -60,6 +67,8 @@ function cabinetOffer(career, g, n = 3) {
 function appoint(career, g, slot, cand) {
   if (typeof cand === 'string') cand = { id: cand, src: cand };
   g.cabinet[slot] = cand.src; g.staffers[slot] = cand.id;
+  g.fit = g.fit || {}; g.fit[slot] = !!(cand.fit && cand.fit.includes(slot));
+  g.recommended = g.recommended || {}; g.recommended[slot] = cand.byYou !== false;
   const t = career.cabinetTypes[cand.src];
   applyFx(career, g, Object.assign({}, t.fx || {}));
   if (cand.fx) applyFx(career, g, cand.fx);
@@ -71,7 +80,12 @@ const slotOf = (career, key) => (career.cabinet.find(s => s.domain.includes(key)
 function costMulFor(career, g, key) {
   const slot = slotOf(career, key); if (!slot) return 1;
   const t = career.cabinetTypes[g.cabinet[slot]] || {};
-  return t.costMul || 1;
+  return (t.costMul || 1) * (g.fit && g.fit[slot] ? 0.9 : 1); // 放對位子的人更有效率
+}
+// 你推薦的人做得好壞，算在你頭上
+function credit(career, g, key, good) {
+  const slot = slotOf(career, key);
+  if (slot && g.recommended && g.recommended[slot] && g.cabinet[slot] !== 'acting') applyFx(career, g, { trust: good ? 2 : -2 });
 }
 
 // ---------- 數值 ----------
@@ -133,7 +147,7 @@ function useDrawer(career, g, id, act) {
     // 自己人第一次處理自己領域的公文會出包
     const slot = slotOf(career, d.id);
     if (slot && g.cabinet[slot] === 'loyal' && !g.flags['oops_' + slot]) { g.flags['oops_' + slot] = 1; fx.pop = (fx.pop || 0) - 4; note = 'oops'; }
-    d.done = true; d.known = true; opened = openChain(career, g, d);
+    d.done = true; d.known = true; opened = openChain(career, g, d); credit(career, g, d.id, true);
     for (const cid of def.conflict || []) { const c = g.drawer.find(x => x.id === cid); if (c && !c.done) { if (def.conflictKind === 'block') c.blocked = 2; else c.costMul = 1.5; } }
   } else if (act === 'shortcut') {
     // 走後門：成本減半、立刻解決；代價晚一點才來
@@ -169,7 +183,7 @@ function pushPledge(career, g, pid, forced) {
   if (block) { ok = false; why = 'blocked:' + block; fx = Object.assign({}, step.failFx); }
   else if (forced === false || (forced === undefined && g.rng() < fail)) { ok = false; why = 'fail'; fx = Object.assign({ budget: -Math.round(cost / 2) }, step.failFx); }
   if (ok) { p.step++; if (p.step >= career.pledgeSteps.length) { p.done = true; Object.assign(fx, def.fx); } }
-  else { p.fails++; g.flags.mess = (g.flags.mess || 0) + 1; }
+  else { p.fails++; g.flags.mess = (g.flags.mess || 0) + 1; credit(career, g, step.id, false); }
   const hits = applyFx(career, g, fx);
   g.log.push({ turn: g.turn, kind: 'pledge', id: pid, step: step.id, ok, why, fx });
   return { ok, why, step, fx, hits };
