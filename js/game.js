@@ -88,7 +88,7 @@ function titleScreen() {
     <button class="btn" id="go">${T('開始 →')}</button>
     <button class="btn ghost" id="gal">${T('📚 圖鑑')}</button>
     <p class="muted center">${T('《我推的市長》系列 Part 2・一局約 8 分鐘<br>人物、政黨、城市全部虛構')}</p>
-    <p class="muted center">${T('摩卡與貓貓小隊')}</p>`);
+    <p class="muted center">${T('摩卡與貓貓小隊')}・v0.6.2</p>`);
   $('#go').onclick = setupScreen;
   $('#gal').onclick = () => galleryScreen(titleScreen);
 }
@@ -139,12 +139,12 @@ function introScreen() {
   show(`
     <h2>${T('📋 你是誰')}</h2>
     <div class="card intro">
-      <p>🧑‍💼 ${T('你是 {0} 任命的<b>副市長</b>（{1}出身），分管<b>{2}</b>。你分管的爛攤子可以直接督導局處處理；別人分管的，要建議市長或找另外兩位副市長協調。重大政策、人事、預算方向，市長拍板。', esc(BOSS.name), C.backgrounds[G.background].name, C.portfolios[G.portfolio].name)}</p>
-      <p>👥 ${T('另外兩位副市長是同事，也是對手：{0}（{1}）和{2}（{3}）。', C.rivals[0].name, C.rivals[0].desc, C.rivals[1].name, C.rivals[1].desc)}</p>
-      <p>🗄️ ${T('前任做了八年，留下一整個<b>抽屜的爛攤子</b>。有些看起來很小，打開才知道很大；有些會連鎖，修了這個才發現那個。')}</p>
-      <p>📣 ${T('老闆選前開了很多<b>政見</b>，每一個都要過議會、要發包、要剪綵。爛攤子會卡住政見。')}</p>
-      <p>⏳ ${T('任期四年，切成 12 回合。每回合先處理一件突發事件，再<b>做 2 件事</b>：收爛攤子，或推政見。')}</p>
-      <p>🏆 ${T('<b>怎麼算贏</b>：連任前夕，爛攤子收得差不多、政見至少兌現 2 個、數值沒有爆掉。數值太低、太高都會出事。')}</p>
+      <p>👔 ${T('你是 {0} 任命的<b>副市長</b>，背景：{1}。你分管<b>{2}</b>的局處，這些事你可以直接督導。', esc(BOSS.name), C.backgrounds[G.background].name, C.portfolios[G.portfolio].name)}</p>
+      <p>🗄️ ${T('前任做了八年，留下一整個<b>抽屜的爛攤子</b>。有些看起來很小，打開才知道很大；有些會連鎖。')}</p>
+      <p>📣 ${T('市長選前開了很多<b>政見</b>，每一個都要過議會、要發包、要剪綵。爛攤子會卡住政見。')}</p>
+      <p>🤝 ${T('另外還有兩位副市長，是同事，也是對手：{0}（{1}）和{2}（{3}）。', C.rivals[0].name, C.rivals[0].desc, C.rivals[1].name, C.rivals[1].desc)}</p>
+      <p>⏳ ${T('任期四年，切成 12 回合。每回合先處理一件突發事件，再<b>做 2 件事</b>。')}</p>
+      <p>🏆 ${T('<b>怎麼算贏</b>：連任前夕，爛攤子收得差不多、政見至少兌現 2 個、數值沒有爆掉，市長還信任你。')}</p>
       <p>😳 ${T('還有一件事：老闆是什麼樣的人，你上任之後才會知道。')}</p>
     </div>
     <div class="card intro"><b>${T('🏛️ 這一屆的議會')}：${C.councils[G.council].emoji} ${C.councils[G.council].name}</b>
