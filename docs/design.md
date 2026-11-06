@@ -1,6 +1,6 @@
 # 我推的市長：上任篇（Part 2）— 設計稿
 
-副標：前任的抽屜。英文（提案）：*My Mayor-to-Be: Taking Office* — The Predecessor's Drawer
+副標：前任的抽屜。英文：*My Mayor: Taking Office* — The Predecessor's Drawer（系列英文統稱 My Mayor）
 
 > 「你以為選上就萬歲了？不，是大坑的開始。」
 

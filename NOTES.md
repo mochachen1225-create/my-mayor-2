@@ -15,8 +15,8 @@
 
 ## 名稱
 - 中：《我推的市長：上任篇》，副標「前任的抽屜」
-- 英：*My Mayor-to-Be: Taking Office*，標語 *The Predecessor's Drawer*
-- Part 1：《我推的市長：選戰篇》／*My Mayor-to-Be: The Campaign*
+- 英：*My Mayor: Taking Office*，標語 *The Predecessor's Drawer*（選上了就不是 to-be）；系列英文統稱 My Mayor
+- Part 1：《我推的市長：選戰篇》／*My Mayor-to-Be*（itch 副標加 The Campaign）
 
 ## 設計決定
 | 決定 | 原因 |
