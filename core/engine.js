@@ -85,11 +85,16 @@ const ruleShift = (career, g) => g.turn >= career.shiftTurn;
 // ---------- 事件 ----------
 function drawEvent(career, g) {
   if (g.turn >= g.turns) return career.events.find(e => e.final);
+  // 固定回合的劇場／里程碑事件（例如百日記者會、颱風季）
+  const round = career.rounds && career.rounds[g.turn - 1];
+  if (round && round.event) { const ev = career.events.find(e => e.id === round.event); if (ev && !g.used.includes(ev.id)) { g.used.push(ev.id); return ev; } }
+  // 觸發型事件（例如出包後的「找人揹鍋」）
+  if (career.triggered) { const id = career.triggered(g); if (id) return career.events.find(e => e.id === id); }
   // 老闆的真面目：中段用事件慢慢露出來
   const tr = g.trait && career.traits[g.trait];
   if (tr && tr.events) { const due = tr.events.find(([t]) => t === g.turn); if (due) return career.events.find(e => e.id === due[1]); }
   const boom = g.drawer.find(d => d.open && !d.done && d.real >= 5 && d.shelved >= 3);
-  if (boom) { boom.done = true; boom.exploded = true; return career.boom(boom, g); }
+  if (boom) { boom.done = true; boom.exploded = true; g.flags.mess = (g.flags.mess || 0) + 1; return career.boom(boom, g); }
   let pool = g.deck.filter(id => !g.used.includes(id));
   if (!pool.length) { g.used = []; pool = g.deck.slice(); }
   const id = pool[Math.floor(g.rng() * pool.length)];
@@ -124,6 +129,7 @@ function useDrawer(career, g, id, act) {
   } else if (act === 'look') {
     d.known = true; d.size = d.real; opened = openChain(career, g, d);
   } else if (act === 'blame') {
+    if (d.own) return { fx: {}, hits: [], opened: [], note: 'own' };
     g.blamed++;
     fx = ruleShift(career, g) ? career.blameLate : career.blameEarly;
   }
@@ -142,14 +148,14 @@ function pledgeCheck(career, g, p) {
   fail = Math.max(0.03, Math.min(0.9, fail));
   return { step, block, fail, cost: Math.round(step.cost * costMulFor(career, g, step.id) * (step.doubleIf && g.drawer.some(d => step.doubleIf.includes(d.id) && !d.done) ? 2 : 1)) };
 }
-function pushPledge(career, g, pid) {
+function pushPledge(career, g, pid, forced) {
   const p = g.pledges.find(x => x.id === pid), def = career.pledges.find(x => x.id === pid);
   const { step, block, cost, fail } = pledgeCheck(career, g, p);
   let fx = { budget: -cost }, ok = true, why = '';
   if (block) { ok = false; why = 'blocked:' + block; fx = Object.assign({}, step.failFx); }
-  else if (g.rng() < fail) { ok = false; why = 'fail'; fx = Object.assign({ budget: -Math.round(cost / 2) }, step.failFx); }
+  else if (forced === false || (forced === undefined && g.rng() < fail)) { ok = false; why = 'fail'; fx = Object.assign({ budget: -Math.round(cost / 2) }, step.failFx); }
   if (ok) { p.step++; if (p.step >= career.pledgeSteps.length) { p.done = true; Object.assign(fx, def.fx); } }
-  else p.fails++;
+  else { p.fails++; g.flags.mess = (g.flags.mess || 0) + 1; }
   const hits = applyFx(career, g, fx);
   g.log.push({ turn: g.turn, kind: 'pledge', id: pid, step: step.id, ok, why, fx });
   return { ok, why, step, fx, hits };
@@ -157,6 +163,8 @@ function pushPledge(career, g, pid) {
 
 // ---------- 回合結束 ----------
 function endTurn(career, g) {
+  // 任期後段，你們自己長出來的爛攤子
+  for (const d of career.drawer.filter(x => x.appearAt === g.turn + 1)) if (!g.drawer.some(x => x.id === d.id)) g.drawer.push({ id: d.id, size: d.look, real: d.real, open: true, known: false, done: false, shelved: 0, blocked: 0, own: true, fresh: true });
   for (const d of g.drawer) {
     if (!d.open || d.done) continue;
     if (d.blocked) d.blocked--;
