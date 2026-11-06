@@ -186,7 +186,8 @@ function useDrawer(career, g, id, act, choice) {
     if (!ok) { const f = { stress: 3 }; applyFx(career, g, f); g.log.push({ turn: g.turn, kind: 'drawer', id, act, ok }); return { fx: f, hits: [], opened: [], note: 'coordfail' }; }
     act = 'do'; g.flags.coordDone = (g.flags.coordDone || 0) + 1; var coord = true;
   }
-  if (ADVISE_ACTS.includes(act) && career.adviseChance && !(act === 'do' && (isMine(career, g, id) || coord))) {
+  const selfChoice = def.choices && choice != null && def.choices[choice].k === 's'; // 走後門這類你自己做的，不用市長點頭
+  if (ADVISE_ACTS.includes(act) && career.adviseChance && !(act === 'do' && (isMine(career, g, id) || coord || selfChoice))) {
     verdict = advise(career, g);
     if (verdict === 'no') { const f = { trust: -1, stress: 2 }; applyFx(career, g, f); g.log.push({ turn: g.turn, kind: 'drawer', id, act, verdict }); return { fx: f, hits: [], opened: [], note: 'no', verdict }; }
   }
@@ -195,6 +196,8 @@ function useDrawer(career, g, id, act, choice) {
       // 這份爛攤子有自己的處理方式：用選到的那一個的效果（成本已經算在裡面）
       const c = def.choices[choice];
       fx = Object.assign({ staff: -2 }, typeof c.fx === 'function' ? c.fx(g) : c.fx);
+      schedule(g, c.later);
+      if (c.k === 's') g.log.push({ turn: g.turn, kind: 'drawer', id, act: 'shortcut' });
       if (verdict === 'half') for (const k in fx) fx[k] = Math.round(fx[k] / 2);
       note = 'choice';
     } else fx = Object.assign({ budget: -Math.round(drawerCost(career, g, d) * (verdict === 'half' ? 1.3 : 1)), staff: -2 }, def.fx);

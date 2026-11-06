@@ -248,29 +248,99 @@ const CAREER_MAYOR_OFFICE = {
     if (ids.includes('C') && !ids.includes('B') && pf.includes('B')) ids.push('B');
     return ids;
   },
-  // 前任的抽屜（每份都對應台灣真實案例的類型；編號見 isekai-studio 的案例清單）
+  // 前任的抽屜：每份都有小場景（scene）和針對那件事的選項（choices）
+  // 選項的 k: 's' 代表你自己私下做（走後門），不用市長點頭；其他選項不是你分管的話要市長拍板
   drawer: [
-    { id: 'A', start: 1, look: 1, real: 3, chain: ['C'], fx: { pop: 3, staff: 2 }, case: 'A10', title: T('卸任前一週通過的案子'), text: T('前任卸任前一週，拍板讓市府轉投資公司準備上市。你們上任第一天叫來報告，才發現程序已經跑了一半。') },
-    { id: 'C', look: 1, real: 2, chain: ['B'], fx: { council: 3 }, case: '彩蛋', title: T('交接清冊第 287 頁'), text: T('上市案的關鍵文件，移交清冊寫著「詳見附件」。附件不見了。') },
-    { id: 'B', look: 1, real: 5, fx: { pop: 3 }, case: 'A12', title: T('綁十年的 LED 路燈合約'), text: T('附件找到了：前任簽了十年的路燈採購加維護。合約寫「亮度不低於 30%」，議員問：「你有聽過跟手機廠商綁十年的嗎？」') },
-    { id: 'D', start: 1, look: 3, real: 3, conflict: ['E'], conflictKind: 'cost', fx: { pop: 2 }, case: 'A8', title: T('只剩冷氣在上班的紀念館'), text: T('前任辦博覽會蓋的紀念館，展期結束後幾乎沒人來，每個月電費照付，大家說「只剩冷氣在上班」。') },
-    { id: 'E', start: 1, look: 2, real: 4, conflict: ['D'], conflictKind: 'cost', fx: { pop: 3, council: 3 }, case: 'A19', title: T('熱潮退了的天空步道'), text: T('開幕時排隊兩小時，現在沒人來。維修封閉半年，議員拍到工地裡只有一台怪手在睡覺。') },
-    { id: 'F', start: 1, look: 2, real: 3, chain: ['G'], conflict: ['H'], conflictKind: 'block', fx: { pop: 3 }, case: 'B17／A14', title: T('選前加碼的敬老福利'), text: T('前任選前宣布敬老卡加碼：點數變多、可搭的交通變多，明年起實施。社福預算成長兩成多，議員質疑是選前補票，財源還沒著落。'),
-      // 這份爛攤子有自己的處理方式（取代一般的「處理掉」）
+    { id: 'A', start: 1, look: 1, real: 3, chain: ['C'], case: 'A10', title: T('卸任前一週通過的案子'), text: T('前任卸任前一週，拍板讓市府轉投資公司準備上市。'),
+      scene: T('轉投資公司的總經理帶著厚厚一疊簡報來找你：「上市程序已經跑一半了，現在喊停，股東會告市府。」秘書在旁邊小聲說：「這案子在前任最後一週，三天就跑完公文。」'),
       choices: [
-        { t: T('照發'), d: T('長輩開心；財政吃緊'), fx: { pop: 5, budget: -10 } },
-        { t: T('縮水'), d: T('省錢；長輩罵、被說翻臉不認帳'), fx: { pop: -6, budget: 4, council: -2 } },
-        { t: T('跟中央爭取補助'), d: T('不用自己出錢；慢，看關係'), fx: g => g.rng() < 0.5 + (g.stats.network || 0) / 200 ? { budget: 4, pop: 2, stress: 3 } : { stress: 5, pop: -2 }, r: g => T('中央的回覆要看你們平常的關係。') },
-        { t: T('改成排富'), d: T('省錢、比較公平；罵聲很大（A14）'), fx: { budget: 6, pop: -4, council: 2 } }
-      ] },
-    { id: 'G', look: 1, real: 5, fx: { council: 8 }, case: 'A13', title: T('改大的工程，差額自己出'), text: T('前任把鐵路高架改成地下化，中央只補原本高架的錢，差額要市府自籌，而且已經發包了。') },
-    { id: 'H', start: 1, look: 3, real: 4, conflict: ['F'], conflictKind: 'block', fx: { pop: 3, staff: 4 }, case: 'B16', title: T('免費營養午餐'), text: T('前任宣布國中小午餐全面免費，經費寫「中央補助」。議員問：「中央沒來怎麼辦？」開辦後團膳又流標。') },
-    { id: 'I', start: 1, look: 3, real: 5, fx: { pop: 4, council: 2 }, case: 'A2', title: T('蓋一半的巨型場館 BOT'), text: T('前任簽的 BOT 巨型場館蓋到一半停工。解約要賠，續蓋要幫廠商背書，監察院的來函已經在桌上。') },
-    { id: 'J', start: 1, look: 2, real: 4, fx: { pop: 3, staff: 2 }, case: 'A7', title: T('趕在卸任前剪綵的體育場'), text: T('前任趕在卸任前剪綵的體育場，啟用第一場比賽就出狀況。關場重做被罵浪費，硬撐被罵不顧安全。') },
-    { id: 'K', start: 1, look: 2, real: 5, fx: { budget: 6, pop: 2 }, case: 'A11', title: T('要付分手費的地上權'), text: T('一塊科技園區的地上權已經設給壽險公司。國際大廠想進駐，要先協商解約，分手費是天文數字，議會還沒點頭。') },
-    // 任期後段，你們自己長出來的
-    { id: 'Y1', own: 1, appearAt: 8, look: 2, real: 4, fx: { pop: 3, council: 2 }, case: 'A16', title: T('你們的捷運延伸線延宕'), text: T('就職時宣布的延伸線，通車前 5 天取消典禮，周邊商品已經在賣了。這次沒有前任可以怪。') },
-    { id: 'Y2', own: 1, appearAt: 10, look: 1, real: 3, fx: { council: 4 }, case: 'A9', title: T('改過兩次的社宅數字'), text: T('你們競選時說的社宅戶數，任內改了兩次。記者做了一張對照表。') }
+        { t: T('照程序繼續上市'), d: T('市府賺一筆；被說延續前朝黑箱'), fx: { budget: 8, pop: -4 } },
+        { t: T('喊停，重新審查'), d: T('被股東罵；議會稱讚你謹慎'), fx: { council: 5, budget: -6, pop: 2 } },
+        { t: T('公開所有會議紀錄'), d: T('市民信任＋；轉投資公司很不爽'), fx: { pop: 5, network: -4, stress: 3 } },
+        { k: 's', t: T('走後門：私下跟股東喬條件'), d: T('事情很快搞定；清白會掉，代價晚點來'), fx: { budget: 4, network: 5, integrity: -10 }, later: { in: 3, fx: { pop: -6 }, text: T('記者拿到你跟股東吃飯的照片。') } }] },
+    { id: 'C', look: 1, real: 2, chain: ['B'], case: '彩蛋', title: T('交接清冊第 287 頁'), text: T('上市案的關鍵文件，移交清冊寫著「詳見附件」。附件不見了。'),
+      scene: T('移交清冊 300 頁，第 287 頁寫著「詳見附件」。你請秘書去找附件。'),
+      choices: [
+        { t: T('等秘書回報'), d: T('三天後就知道了'), fx: { stress: 2 }, r: g => T('三天後，秘書回報：{0}', CAREER_MAYOR_OFFICE.attachments[Math.floor(g.rng() * CAREER_MAYOR_OFFICE.attachments.length)]) },
+        { t: T('打給前任的秘書問'), d: T('快；但前任會知道你在查'), fx: { network: 2, trust: -2 }, r: T('前任的秘書說：「應該在地下室吧，我也不確定。」附件在地下室找到了。') },
+        { t: T('請政風處協助調閱'), d: T('慢但正式；局處有點緊張'), fx: { integrity: 3, staff: -3 }, r: T('政風處調出了附件，順便問了好幾個問題。') }] },
+    { id: 'B', look: 1, real: 5, case: 'A12', title: T('綁十年的 LED 路燈合約'), text: T('前任簽了十年的路燈採購加維護。'),
+      scene: T('附件找到了：十年的路燈採購加維護，合約寫「亮度不低於 30%」。工務局長嘆氣：「廠商說燈壞了要等排程，換色溫要另外付費。」議員已經在問：「你有聽過跟手機廠商綁十年的嗎？」'),
+      choices: [
+        { t: T('重新談約'), d: T('財政 −16；民意＋'), fx: { budget: -16, pop: 4, stress: 3 } },
+        { t: T('提前解約'), d: T('財政 −24；一勞永逸'), fx: { budget: -24, pop: 6, council: 2 } },
+        { t: T('照約走，加強驗收'), d: T('不花錢；路燈繼續暗暗的'), fx: { pop: -4, staff: 2 } },
+        { k: 's', t: T('走後門：找廠商老闆喝茶'), d: T('廠商自己讓步；清白會掉'), fx: { budget: -6, network: 4, integrity: -10 }, later: { in: 3, fx: { council: -6 }, text: T('議員問：「廠商為什麼突然讓步？你們談了什麼？」') } }] },
+    { id: 'D', start: 1, look: 3, real: 3, conflict: ['E'], conflictKind: 'cost', case: 'A8', title: T('只剩冷氣在上班的紀念館'), text: T('前任辦博覽會蓋的紀念館，展期結束後幾乎沒人來。'),
+      scene: T('你到紀念館視察，大廳只有一個保全和一台開到 22 度的冷氣。館長說：「每個月電費照付，上週來了 11 個人，其中 3 個是來吹冷氣的。」'),
+      choices: [
+        { t: T('改成青年創業基地'), d: T('財政 −12；有機會活起來'), fx: { budget: -12, pop: 4 } },
+        { t: T('委外經營'), d: T('財政＋；被說把公共空間賣掉'), fx: { budget: 6, pop: -2 } },
+        { t: T('辦一檔熱門展覽救人氣'), d: T('財政 −8；熱潮可能一下就退'), fx: { budget: -8, pop: 5 }, later: { in: 3, fx: { pop: -3 }, text: T('展覽結束，紀念館又只剩冷氣在上班。') } },
+        { k: 's', t: T('走後門：讓議員的協會免費借用'), d: T('議會＋；清白會掉'), fx: { council: 6, integrity: -6 }, later: { in: 2, fx: { pop: -5 }, text: T('記者發現紀念館每週都被同一個協會免費借走。') } }] },
+    { id: 'E', start: 1, look: 2, real: 4, conflict: ['D'], conflictKind: 'cost', case: 'A19', title: T('熱潮退了的天空步道'), text: T('開幕時排隊兩小時，現在沒人來。'),
+      scene: T('天空步道維修封閉了半年。議員在臉書貼出照片：工地裡只有一台怪手在睡覺。觀光局長說：「廠商說材料還沒到。」'),
+      choices: [
+        { t: T('趕工重新開放'), d: T('財政 −14；民意＋'), fx: { budget: -14, pop: 5, council: 2 } },
+        { t: T('改成夜間限定燈光秀'), d: T('財政 −8；有話題'), fx: { budget: -8, pop: 4 } },
+        { t: T('乾脆拆掉'), d: T('財政 −10；被罵浪費，但一了百了'), fx: { budget: -10, pop: -2, council: 3 } },
+        { k: 's', t: T('走後門：找認識的廠商先開工'), d: T('明天就有人上工；清白會掉'), fx: { pop: 4, budget: -6, integrity: -10 }, later: { in: 3, fx: { pop: -6, council: -3 }, text: T('記者查到：接手的廠商沒有經過招標。') } }] },
+    { id: 'F', start: 1, look: 2, real: 3, chain: ['G'], conflict: ['H'], conflictKind: 'block', case: 'B17／A14', title: T('選前加碼的敬老福利'), text: T('前任選前宣布敬老卡加碼，明年起實施，財源還沒著落。'),
+      scene: T('社會局長拿著試算表進來：「照前任的加碼，明年要多兩成多。錢……還沒著落。」門外有里長帶著長輩來陳情。'),
+      choices: [
+        { t: T('照發，砍別的預算'), d: T('長輩開心；財政吃緊'), fx: { pop: 5, budget: -12 } },
+        { t: T('縮水，先跟長輩道歉'), d: T('省錢；長輩罵、被說翻臉'), fx: { pop: -6, budget: 4, council: -2 } },
+        { t: T('改成排富，準備挨罵'), d: T('省錢、比較公平；罵聲很大'), fx: { budget: 6, pop: -4, council: 2 } },
+        { t: T('跟中央爭取補助'), d: T('不用自己出錢；慢，看關係'), fx: g => g.rng() < 0.5 + (g.stats.network || 0) / 200 ? { budget: 4, pop: 2, stress: 3 } : { stress: 5, pop: -2 }, r: T('中央的回覆，要看你們平常的關係。') },
+        { k: 's', t: T('走後門：找議員把別的案子的錢挪過來'), d: T('錢有了；清白會掉，代價晚點來'), fx: { pop: 4, council: 4, integrity: -10 }, later: { in: 2, fx: { budget: -10, pop: -3 }, text: T('被挪走經費的案子停工了，里長在議會拍桌。') } }] },
+    { id: 'G', look: 1, real: 5, case: 'A13', title: T('改大的工程，差額自己出'), text: T('前任把鐵路高架改成地下化，中央只補原本高架的錢。'),
+      scene: T('財政局長把一張表攤在桌上：「中央只補原本高架的錢，地下化的差額要我們自籌。工程已經發包了，每個月都在付。」'),
+      choices: [
+        { t: T('發行公債撐過去'), d: T('財政 −10；議會要你說清楚'), fx: { budget: -10, council: -4 } },
+        { t: T('跟中央重新談補助'), d: T('慢；看關係'), fx: g => g.rng() < 0.4 + (g.stats.network || 0) / 200 ? { budget: 8, stress: 4 } : { stress: 6, budget: -4 }, r: T('中央說：「我們研議看看。」') },
+        { t: T('縮減其他工程'), d: T('財政＋；里長們不爽'), fx: { budget: 6, pop: -5 } },
+        { k: 's', t: T('走後門：先把帳挪到明年'), d: T('今年看起來沒事；清白會掉'), fx: { budget: 10, integrity: -12 }, later: { in: 3, fx: { budget: -18, council: -6 }, text: T('審計報告寫：「有一筆不在預算書上。」') } }] },
+    { id: 'H', start: 1, look: 3, real: 4, conflict: ['F'], conflictKind: 'block', case: 'B16', title: T('免費營養午餐'), text: T('前任宣布國中小午餐全面免費，經費寫「中央補助」。'),
+      scene: T('教育局長一臉為難：「經費寫中央補助，議員問中央沒來怎麼辦。下學期就要開辦，團膳又流標了一次。」家長群組已經在問了。'),
+      choices: [
+        { t: T('市府先自己出錢'), d: T('財政 −14；家長安心'), fx: { budget: -14, pop: 5 } },
+        { t: T('分區分階段開辦'), d: T('財政 −6；被說跳票'), fx: { budget: -6, pop: -2, staff: 2 } },
+        { t: T('重新招標團膳'), d: T('慢；但這次有人來'), fx: { budget: -4, staff: -2, stress: 3 } },
+        { k: 's', t: T('走後門：找熟的團膳廠商直接簽'), d: T('明天就有便當；清白會掉'), fx: { pop: 4, budget: -4, integrity: -12 }, later: { in: 3, fx: { pop: -8 }, text: T('記者發現團膳廠商老闆是議員的親戚。') } }] },
+    { id: 'I', start: 1, look: 3, real: 5, case: 'A2', title: T('蓋一半的巨型場館 BOT'), text: T('前任簽的 BOT 巨型場館蓋到一半停工。'),
+      scene: T('監察院的來函放在你桌上。廠商的總經理在會客室等你：「續蓋可以，市府要幫我們背書貸款。」法務局長搖頭：「解約要賠很多。」'),
+      choices: [
+        { t: T('解約，市府收回自己蓋'), d: T('財政 −20；議會支持'), fx: { budget: -20, council: 5, pop: 3 } },
+        { t: T('重新談約再續蓋'), d: T('財政 −10；拖很久'), fx: { budget: -10, stress: 5 } },
+        { t: T('交給監察院和法院處理'), d: T('不花錢；被說不作為'), fx: { pop: -5, council: -2 } },
+        { k: 's', t: T('走後門：幫廠商背書，先蓋再說'), d: T('工地重新開工；清白會掉'), fx: { pop: 6, integrity: -12, network: 4 }, later: { in: 3, fx: { budget: -15, council: -6 }, text: T('廠商的財務出問題，市府的背書被追討了。') } }] },
+    { id: 'J', start: 1, look: 2, real: 4, case: 'A7', title: T('趕在卸任前剪綵的體育場'), text: T('前任趕在卸任前剪綵的體育場，啟用第一場就出狀況。'),
+      scene: T('體育局長傳來照片：草皮積水、看台有一段欄杆鬆了。下週有一場國際賽要辦，主辦單位在問「到底能不能辦」。'),
+      choices: [
+        { t: T('關場重做'), d: T('財政 −14；被罵浪費，但安全'), fx: { budget: -14, pop: -2, council: 3 } },
+        { t: T('邊修邊辦，加派人力'), d: T('財政 −6；有風險'), fx: { budget: -6, staff: -4, stress: 4 } },
+        { t: T('國際賽移到別的場地'), d: T('丟臉；但不出事'), fx: { pop: -4, budget: -2 } },
+        { k: 's', t: T('走後門：請檢查單位「通融」一下'), d: T('照常比賽；清白會掉'), fx: { pop: 4, integrity: -12 }, later: { in: 2, fx: { pop: -10, trust: -4 }, text: T('比賽當天又出狀況，記者問：「誰讓它通過檢查的？」') } }] },
+    { id: 'K', start: 1, look: 2, real: 5, case: 'A11', title: T('要付分手費的地上權'), text: T('一塊科技園區的地上權已經設給壽險公司。'),
+      scene: T('國際大廠的代表來拜會：「我們很想進駐，但那塊地現在是壽險公司的。」財政局長算了一下分手費，臉色發白。'),
+      choices: [
+        { t: T('付分手費，迎接大廠'), d: T('財政 −22；之後稅收＋'), fx: { budget: -22, pop: 6 }, later: { in: 3, fx: { budget: 10 }, text: T('大廠進駐，第一年的稅收進來了。') } },
+        { t: T('找別塊地給大廠'), d: T('財政 −6；大廠可能跑掉'), fx: { budget: -6, pop: 2, stress: 3 } },
+        { t: T('維持現狀'), d: T('不花錢；被說錯失機會'), fx: { pop: -5 } },
+        { k: 's', t: T('走後門：私下跟壽險公司喬'), d: T('分手費打折；清白會掉'), fx: { budget: -10, network: 5, integrity: -10 }, later: { in: 3, fx: { council: -6 }, text: T('議員質疑：「分手費怎麼突然打折？」') } }] },
+    { id: 'Y1', own: 1, appearAt: 8, look: 2, real: 4, case: 'A16', title: T('你們的捷運延伸線延宕'), text: T('就職時宣布的延伸線延宕了。'),
+      scene: T('捷運局長報告：「地質報告出來了，要多挖兩年。」通車紀念商品已經在賣。這次沒有前任可以怪。'),
+      choices: [
+        { t: T('公開延期，說清楚原因'), d: T('民意 −；議會＋'), fx: { pop: -5, council: 4 } },
+        { t: T('加預算趕工'), d: T('財政 −16；可能如期'), fx: { budget: -16, pop: 3, staff: -3 } },
+        { t: T('先分段通車'), d: T('財政 −8；被說半套'), fx: { budget: -8, pop: 2 } },
+        { k: 's', t: T('走後門：叫廠商先報「進度正常」'), d: T('暫時沒事；清白會掉'), fx: { pop: 3, integrity: -10 }, later: { in: 2, fx: { pop: -10, trust: -5 }, text: T('記者拿到真正的進度表。') } }] },
+    { id: 'Y2', own: 1, appearAt: 10, look: 1, real: 3, case: 'A9', title: T('改過兩次的社宅數字'), text: T('你們競選時說的社宅戶數，任內改了兩次。'),
+      scene: T('記者做了一張對照表：競選時說 3 萬戶，上任後改成「興辦」2 萬戶，現在變成「規劃」1.2 萬戶。記者會明天就要開。'),
+      choices: [
+        { t: T('認錯，說明實際進度'), d: T('民意 −；清白＋'), fx: { pop: -4, integrity: 4, council: 2 } },
+        { t: T('加速推出一批'), d: T('財政 −12；有東西可以剪綵'), fx: { budget: -12, pop: 4 } },
+        { k: 's', t: T('改口徑：「戶數包含租金補貼」'), d: T('數字變好看；被拆穿會很慘'), fx: { pop: 3, integrity: -6 }, later: { in: 2, fx: { pop: -7 }, text: T('專家在脆上算給大家看：租金補貼不是社宅。') } }] }
   ],
 
   // 事件卡：主角是幕僚。上台、受訪、拍板、簽核的是市長或局長；你做的是準備、協調、擬稿、喬、擋。
@@ -567,7 +637,7 @@ const CAREER_MAYOR_OFFICE = {
     { t: T('🫣 繼續裝沒看到'), fx: { pop: -12, council: -6 }, r: T('脆上開始倒數你們的任期。') }] }),
 
   onTurnEnd: g => {
-    const fx = { budget: 9, stress: 5 }; // 每個月的稅收；壓力慢慢累積
+    const fx = { budget: 5, stress: 5 }; // 每個月的稅收；壓力慢慢累積
     // 中央借將、只做兩年的人：第 2 年走人
     if (g.turn === 9) for (const k of Object.keys(g.cabinet)) if (g.cabinet[k] === 'central' || g.staffers[k] === 'dream_works' || g.staffers[k] === 'peerfin') { g.cabinet[k] = 'acting'; g.staffers[k] = 'acting'; g.later.push({ at: g.turn + 1, fx: { staff: -3 }, text: T('說好只做兩年的局長，交接完就走了。那個位子現在是代理。') }); }
     // 公民記者副市長的條件：百日前要查清楚卸任前通過的案子
@@ -600,7 +670,38 @@ const CAREER_MAYOR_OFFICE = {
     { id: 'becomeprev', emoji: '🪞', title: T('你也變成前任了'), text: T('政見剪綵剪得很開心，抽屜卻越塞越滿。四年後，下一任市長打開抽屜，翻到你們留下的公文，上面寫著：「另案辦理」。'), when: (g, t) => t.open >= 5 || (t.pledges >= 2 && t.drawer <= t.total - 5) },
     { id: 'meh', emoji: '📎', title: T('平安下莊，抽屜還很滿'), text: T('四年過去了，沒出大事，也沒做成什麼大事。秘書長：「很正常，大家都這樣。」'), when: () => true }
   ],
-  // ===== 找附件小遊戲：找到之後的結果（都是公部門真的會遇到的）=====
+  // ===== 每回合開頭的「你的行程表」：事件從其中一格跳出來 =====
+  agenda: [
+    [T('08:00'), T('市政會議')], [T('09:30'), T('局處簡報')], [T('10:00'), T('工地視察')], [T('11:00'), T('接見陳情團體')],
+    [T('12:00'), T('跟議員吃便當')], [T('14:00'), T('議員來訪')], [T('15:00'), T('代表市長出席活動')], [T('16:00'), T('記者會')],
+    [T('17:30'), T('跨局處協調會')], [T('19:00'), T('陪市長應酬')], [T('22:00'), T('LINE 群組又炸了')], [T('23:30'), T('局長傳來一份急件')]
+  ],
+  // ===== 小遊戲：公文快速批（看內容判斷，蓋「核可」或「退回」）=====
+  // ok：該蓋哪一顆章；trap：陷阱公文（蓋錯有後果）
+  memos: [
+    { t: T('辦公室影印機租約續約'), ok: 'yes' },
+    { t: T('颱風前疏濬工程緊急採購'), ok: 'yes', trap: T('颱風前的急件不能退') },
+    { t: T('人行道鋪面更新（第 3 次）'), ok: 'yes' },
+    { t: T('市府員工運動會便當 600 個'), ok: 'yes' },
+    { t: T('公園溜滑梯安全檢查'), ok: 'yes' },
+    { t: T('路燈維修 20,000,000 元（估價單寫 2,000,000）'), ok: 'no', trap: T('金額多了一個 0') },
+    { t: T('表哥工程行承攬人行道案'), ok: 'no', trap: T('你親戚公司的標案') },
+    { t: T('前任合約續約（附件：詳見附件）'), ok: 'no', trap: T('附件不見了') },
+    { t: T('議員「關心」便條：某案請優先辦理'), ok: 'no', trap: T('關說條子') },
+    { t: T('吉祥物第 41 號設計費'), ok: 'no' },
+    { t: T('市長大頭照路燈旗加印 5,000 面'), ok: 'no' },
+    { t: T('局處長出國考察（行程：海島度假村）'), ok: 'no' },
+    { t: T('長照據點延長服務時間'), ok: 'yes' },
+    { t: T('公車站牌換成中英對照'), ok: 'yes' }
+  ],
+  // ===== 小遊戲：剪綵排站位 =====
+  lineupPeople: [
+    { id: 'mayor', emoji: '🧑‍💼', name: T('市長') }, { id: 'you', emoji: '🙋', name: T('你') },
+    { id: 'councilor', emoji: '🗣️', name: T('對手黨議員') }, { id: 'chief', emoji: '👴', name: T('里長') },
+    { id: 'director', emoji: '👔', name: T('局長') }, { id: 'vendor', emoji: '🧾', name: T('得標廠商') },
+    { id: 'rival', emoji: '😏', name: T('周副市長') }
+  ],
+  // ===== 找附件：秘書三天後回報的結果（都是公部門真的會遇到的）=====
   attachments: [
     T('附件是一片光碟。全辦公室已經沒有一台電腦有光碟機。'),
     T('附件存在舊系統裡。舊系統去年下線了，要調閱得跑公文，大約三週。'),

@@ -182,3 +182,30 @@ h2 { font-size: 21px; margin: 6px 0 10px; }
 @keyframes flash { 0% { opacity: 0; transform: translateY(4px); } 20% { opacity: 1; transform: none; } 100% { opacity: .85; } }
 .statrow.city .glabel { background: #e3e9f7; color: #33508f; }
 .statrow.me .glabel { background: #f3e6d0; color: #6b5a33; }
+/* v0.7：行程表、公文快速批、預算分配、剪綵排站位、抽屜場景 */
+.agenda { background: #fff; border: 2px solid var(--line); border-radius: 14px; padding: 8px 12px; margin: 10px 0 0; font-size: 13px; }
+.agenda .ah { font-weight: 700; margin-bottom: 4px; }
+.agenda div span { display: inline-block; width: 48px; color: var(--muted); }
+.agenda .hit { color: #a33224; font-weight: 700; }
+.scene { display: block; background: #fff6df; border-radius: 10px; padding: 10px; line-height: 1.65; }
+.doc.memo { text-align: center; }
+.doc.memo .mt { font-size: 20px; font-weight: 700; line-height: 1.5; }
+.stamps.two { grid-template-columns: 1fr 1fr; }
+.stamps.two button { padding: 22px 4px; font-size: 18px; }
+.stamps.two button[data-k="yes"] { background: #2e8b57; }
+.stamps.two button[data-k="no"] { background: #c0392b; }
+.memolist div { font-size: 14px; padding: 4px 0; border-bottom: 1px solid #f0e8d8; }
+.memolist div.ng { color: #a33224; }
+.memolist small { display: block; font-size: 12px; }
+.alloc { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+.alloc b { flex: 1; }
+.alloc button { width: 40px; height: 40px; border-radius: 10px; border: 2px solid var(--line); background: #fff; font-size: 20px; }
+.alloc span { width: 56px; text-align: center; font-weight: 700; }
+.rules div { font-size: 13px; margin: 2px 0; }
+.people { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.people button, .stage button { width: 52px; height: 58px; border-radius: 10px; border: 2px solid var(--line); background: #fff; font-size: 22px; padding: 2px; }
+.people button small, .stage button small { display: block; font-size: 9px; color: var(--muted); }
+.people button.on { border-color: var(--accent); background: #fff6df; }
+.stage { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; background: #f3e6d0; border-radius: 10px; padding: 6px; }
+.stage button { width: 100%; }
+.stage button.cpos { border-color: #c0392b; }

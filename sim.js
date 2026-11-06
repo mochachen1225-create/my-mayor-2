@@ -30,7 +30,12 @@ function play(seed, strat) {
       else { d = open.slice().sort((x, y) => (x.known - y.known) || (y.real - x.real))[0]; act = !d.known && r() < 0.5 ? 'look' : (g.stats.budget > E.drawerCost(C, g, d) + 8 ? 'do' : (E.ruleShift(C, g) ? 'shelve' : 'blame')); }
       if (act === 'do' && !E.isMine(C, g, d.id) && strat !== 'random' && r() < 0.5) act = 'coord';
       if (act === 'do' && d.blocked) act = 'look';
-      E.useDrawer(C, g, d.id, act);
+      const def = C.drawer.find(x => x.id === d.id), chs = def.choices || [];
+      let ci;
+      if (act === 'shortcut') { act = 'do'; ci = chs.findIndex(c => c.k === 's'); }
+      else if (act === 'do') { const clean = chs.map((c, i) => i).filter(i => chs[i].k !== 's'); ci = strat === 'random' ? Math.floor(r() * chs.length) : clean[Math.floor(r() * clean.length)]; }
+      if (act === 'look') continue;
+      E.useDrawer(C, g, d.id, act, ci == null || ci < 0 ? undefined : ci);
     }
     if (E.endTurn(C, g)) break;
   }
