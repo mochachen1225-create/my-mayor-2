@@ -21,8 +21,11 @@ function newRun(career, opts = {}) {
   for (const s of career.stats) g.stats[s.id] = s.start;
   if (opts.carry) g.flags.carry = opts.carry;
   g.bossType = opts.bossType || null;
+  // 你的背景與分管領域（開場選）
+  g.background = opts.background || null; g.portfolio = opts.portfolio || null;
+  if (career.backgrounds && g.background) applyFx(career, g, career.backgrounds[g.background].fx || {});
   // 每局只出現部分抽屜公文（連鎖關係照舊）
-  const ids = career.drawerSubset ? career.drawerSubset(rng) : career.drawer.map(d => d.id);
+  const ids = career.drawerSubset ? career.drawerSubset(rng, g) : career.drawer.map(d => d.id);
   g.drawer = career.drawer.filter(d => ids.includes(d.id)).map(d => ({ id: d.id, size: d.look, real: d.real, open: !!d.start, known: false, done: false, shelved: 0, blocked: 0 }));
   // 開局隨機的議會生態
   if (career.councils) { const ks = Object.keys(career.councils); g.council = ks[Math.floor(rng() * ks.length)]; applyFx(career, g, career.councils[g.council].fx || {}); }
@@ -33,7 +36,10 @@ function newRun(career, opts = {}) {
   const pool = (career.pledgesFor ? career.pledgesFor(g.bossType) : career.pledges).slice();
   const pick = opts.pledges || [];
   while (pick.length < career.pledgeCount && pool.length) { const p = pool.splice(Math.floor(rng() * pool.length), 1)[0]; if (!pick.includes(p.id)) pick.push(p.id); }
-  g.pledges = pick.map(id => ({ id, step: 0, fails: 0 }));
+  // 至少一張政見落在你分管的領域
+  const mineP = g.portfolio && career.portfolios ? career.portfolios[g.portfolio].pledges : null;
+  if (mineP && !pick.some(id => mineP.includes(id))) pick[pick.length - 1] = mineP[Math.floor(rng() * mineP.length)];
+  g.pledges = pick.map(id => ({ id, step: 0, fails: 0, mine: !!(mineP && mineP.includes(id)) }));
   return g;
 }
 function weighted(rng, list) { const tot = list.reduce((a, [, w]) => a + w, 0); let x = rng() * tot; for (const [k, w] of list) { x -= w; if (x < 0) return k; } return list[list.length - 1][0]; }
@@ -43,7 +49,8 @@ function weighted(rng, list) { const tot = list.reduce((a, [, w]) => a + w, 0); 
 // 每個職位從人才池抽 3 位候選人（來源不重複）
 function cabinetOffer(career, g, n = 3) {
   const offer = {}, used = new Set(), srcCount = {};
-  for (const s of career.cabinet) {
+  const slots = g.portfolio && career.portfolios ? career.cabinet.filter(s => career.portfolios[g.portfolio].slots.includes(s.id)) : career.cabinet;
+  for (const s of slots) {
     const pool = career.candidates.filter(c => (!c.fit || c.fit.includes(s.id) || c.src === 'acting') && !used.has(c.id)); // 只出現在對得上的位子
     const bySrc = {};
     for (const c of pool) (bySrc[c.src] = bySrc[c.src] || []).push(c);
@@ -167,11 +174,19 @@ function openChain(career, g, d) {
 }
 // 「處理掉」和「說是前任的」要市長拍板（建議市長）；調查、走後門是你自己做
 const ADVISE_ACTS = ['do', 'blame'];
+// 你分管的爛攤子：可以直接督導局處，不用建議市長
+const isMine = (career, g, id) => !!(g.portfolio && career.portfolios && career.portfolios[g.portfolio].drawer.includes(id)) || !!((g.drawer.find(d => d.id === id) || {}).own && g.portfolio === 'works' && id === 'Y1');
 function useDrawer(career, g, id, act) {
   const d = g.drawer.find(x => x.id === id), def = career.drawer.find(x => x.id === id);
   let fx = {}, opened = [], note = '';
   let verdict = null;
-  if (ADVISE_ACTS.includes(act) && career.adviseChance) {
+  if (act === 'coord') {
+    // 不是你分管的：找負責的副市長協調；成了，功勞多半算他的
+    const ok = g.rng() < 0.4 + (g.stats.network || 0) / 200;
+    if (!ok) { const f = { stress: 3 }; applyFx(career, g, f); g.log.push({ turn: g.turn, kind: 'drawer', id, act, ok }); return { fx: f, hits: [], opened: [], note: 'coordfail' }; }
+    act = 'do'; g.flags.coordDone = (g.flags.coordDone || 0) + 1; var coord = true;
+  }
+  if (ADVISE_ACTS.includes(act) && career.adviseChance && !(act === 'do' && (isMine(career, g, id) || coord))) {
     verdict = advise(career, g);
     if (verdict === 'no') { const f = { trust: -1, stress: 2 }; applyFx(career, g, f); g.log.push({ turn: g.turn, kind: 'drawer', id, act, verdict }); return { fx: f, hits: [], opened: [], note: 'no', verdict }; }
   }
@@ -181,6 +196,8 @@ function useDrawer(career, g, id, act) {
     const slot = slotOf(career, d.id);
     if (slot && g.cabinet[slot] === 'loyal' && !g.flags['oops_' + slot]) { g.flags['oops_' + slot] = 1; fx.pop = (fx.pop || 0) - 4; note = 'oops'; }
     d.done = true; d.known = true; opened = openChain(career, g, d); credit(career, g, d.id, true);
+    if ('succession' in g.stats) fx.succession = (fx.succession || 0) + (coord ? -1 : isMine(career, g, d.id) ? 3 : 1);
+    if (coord) note = 'coord';
     for (const cid of def.conflict || []) { const c = g.drawer.find(x => x.id === cid); if (c && !c.done) { if (def.conflictKind === 'block') c.blocked = 2; else c.costMul = 1.5; } }
   } else if (act === 'shortcut') {
     // 走後門：成本減半、立刻解決；代價晚一點才來
@@ -210,7 +227,8 @@ function pledgeCheck(career, g, p) {
   return { step, block, fail, cost: Math.round(step.cost * costMulFor(career, g, step.id) * (step.doubleIf && g.drawer.some(d => step.doubleIf.includes(d.id) && !d.done) ? 2 : 1)) };
 }
 function pushPledge(career, g, pid, forced, viaAdvice) {
-  if (viaAdvice && career.adviseChance && advise(career, g) === 'no') {
+  const pmine = (g.pledges.find(x => x.id === pid) || {}).mine;
+  if (viaAdvice && !pmine && career.adviseChance && advise(career, g) === 'no') {
     const p0 = g.pledges.find(x => x.id === pid), st = career.pledgeSteps[p0.step], f = { trust: -1 };
     applyFx(career, g, f);
     return { ok: false, why: 'mayor', step: st, fx: f, hits: [] };
@@ -220,7 +238,7 @@ function pushPledge(career, g, pid, forced, viaAdvice) {
   let fx = { budget: -cost }, ok = true, why = '';
   if (block) { ok = false; why = 'blocked:' + block; fx = Object.assign({}, step.failFx); }
   else if (forced === false || (forced === undefined && g.rng() < fail)) { ok = false; why = 'fail'; fx = Object.assign({ budget: -Math.round(cost / 2) }, step.failFx); }
-  if (ok) { p.step++; if (p.step >= career.pledgeSteps.length) { p.done = true; Object.assign(fx, def.fx); } }
+  if (ok) { p.step++; if (p.step >= career.pledgeSteps.length) { p.done = true; Object.assign(fx, def.fx); if ('succession' in g.stats) fx.succession = (fx.succession || 0) + (p.mine ? 5 : 2); } }
   else { p.fails++; g.flags.mess = (g.flags.mess || 0) + 1; credit(career, g, step.id, false); }
   const hits = applyFx(career, g, fx);
   g.log.push({ turn: g.turn, kind: 'pledge', id: pid, step: step.id, ok, why, fx });
@@ -266,4 +284,4 @@ function seriesSave(career, g, end) {
 const encodeSave = o => btoa(unescape(encodeURIComponent(JSON.stringify(o))));
 const decodeSave = s => { try { return JSON.parse(decodeURIComponent(escape(atob(s.trim())))); } catch (e) { return null; } };
 
-if (typeof module !== 'undefined') module.exports = { traitEvent, advise, pushPledgeGray, schedule, makeRng, newRun, cabinetOffer, appoint, runTitle, applyFx, drawEvent, chooseEvent, drawerCost, useDrawer, pledgeCheck, pushPledge, endTurn, tally, ending, ruleShift, seriesSave, encodeSave, decodeSave };
+if (typeof module !== 'undefined') module.exports = { isMine, traitEvent, advise, pushPledgeGray, schedule, makeRng, newRun, cabinetOffer, appoint, runTitle, applyFx, drawEvent, chooseEvent, drawerCost, useDrawer, pledgeCheck, pushPledge, endTurn, tally, ending, ruleShift, seriesSave, encodeSave, decodeSave };

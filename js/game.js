@@ -32,7 +32,7 @@ function shareImage(e, ti, tr, t) {
   x.fillStyle = '#e0a526'; x.font = font(34); x.fillText(T('你以為選上就萬歲了？不，是大坑的開始。'), W / 2, H - 110);
   c.toBlob(async blob => {
     const file = new File([blob], 'my-mayor-2.png', { type: 'image/png' });
-    const text = T('我在《我推的市長：上任篇》當市長室主任，結局是「{0}」，稱號「{1}」。老闆的真面目是……「{2}」！👉 https://mochachen1225-create.github.io/my-mayor-2/', e.title, ti.name, tr.name);
+    const text = T('我在《我推的市長：上任篇》當副市長，結局是「{0}」，稱號「{1}」。老闆的真面目是……「{2}」！👉 https://mochachen1225-create.github.io/my-mayor-2/', e.title, ti.name, tr.name);
     try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], text }); return; } } catch (err) { /* 取消分享就算了 */ }
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'my-mayor-2.png'; a.click();
   }, 'image/png');
@@ -96,7 +96,7 @@ function titleScreen() {
 // ---------- 開場：自訂市長 ----------
 function setupScreen() {
   const w = lastWin();
-  let gender = w && w.gender ? w.gender : '';
+  let gender = w && w.gender ? w.gender : '', bg = '', pf = '';
   const render = () => {
     show(`
       <h2>${T('🎉 誰當選了？')}</h2>
@@ -107,14 +107,25 @@ function setupScreen() {
         <label class="lab">${T('性別')}</label>
         <div class="seg">${[['m', T('男')], ['f', T('女')], ['', T('隨機')]].map(([k, n]) => `<button class="${gender === k ? 'on' : ''}" data-g="${k}">${n}</button>`).join('')}</div>
       </div>
+      <h2>${T('🧑‍💼 你是誰？')}</h2>
+      <p class="muted">${T('市長要任命你當副市長。你原本是：')}</p>
+      <div class="picks">${Object.entries(C.backgrounds).map(([k, b]) => `<button class="pick ${bg === k ? 'on' : ''}" data-bg="${k}"><b>${b.emoji} ${b.name}</b><small>${b.desc}</small></button>`).join('')}</div>
+      <h2>${T('📂 你分管哪一塊？')}</h2>
+      <p class="muted">${T('三位副市長各管幾個局處。你分管的爛攤子，可以直接督導局處處理。')}</p>
+      <div class="picks">${Object.entries(C.portfolios).map(([k, b]) => `<button class="pick ${pf === k ? 'on' : ''}" data-pf="${k}"><b>${b.emoji} ${b.name}</b><small>${b.desc}</small></button>`).join('')}</div>
+      <p class="muted center">${T('沒選的會隨機')}</p>
       <button class="btn" id="go">${T('下一步 →')}</button>`);
-    app.querySelectorAll('[data-g]').forEach(b => b.onclick = () => { const v = $('#nm').value; gender = b.dataset.g; render(); $('#nm').value = v; });
+    const keep = f => b => b.onclick = () => { const v = $('#nm').value, y = window.scrollY; f(b); render(); $('#nm').value = v; window.scrollTo(0, y); };
+    app.querySelectorAll('[data-g]').forEach(keep(b => { gender = b.dataset.g; }));
+    app.querySelectorAll('[data-bg]').forEach(keep(b => { bg = b.dataset.bg; }));
+    app.querySelectorAll('[data-pf]').forEach(keep(b => { pf = b.dataset.pf; }));
     $('#go').onclick = () => {
       const g = gender || (Math.random() < 0.5 ? 'm' : 'f');
       const name = $('#nm').value.trim() || NAMES[g][Math.floor(Math.random() * 6)];
       const type = w && w.boss === name && w.type ? w.type : 'ABCDEF'[Math.floor(Math.random() * 6)];
       BOSS = { name, gender: g, type, fromP1: !!(w && w.boss === name) };
-      G = newRun(C, { seed: Date.now() % 1e9, bossType: BOSS.type, carry: BOSS.fromP1 ? { boss: BOSS.name, type: BOSS.type } : null });
+      const pick = o => Object.keys(o)[Math.floor(Math.random() * Object.keys(o).length)];
+      G = newRun(C, { seed: Date.now() % 1e9, bossType: BOSS.type, background: bg || pick(C.backgrounds), portfolio: pf || pick(C.portfolios), carry: BOSS.fromP1 ? { boss: BOSS.name, type: BOSS.type } : null });
       const force = new URLSearchParams(location.search).get('trait'); // 測試用：?trait=corrupt
       if (force && C.traits[force]) G.trait = force;
       introScreen();
@@ -128,7 +139,8 @@ function introScreen() {
   show(`
     <h2>${T('📋 你是誰')}</h2>
     <div class="card intro">
-      <p>🧑‍💼 ${T('你是 {0} 的<b>市長室主任</b>：行程、會議、公文、局處、記者，最後都會落到你身上。', esc(BOSS.name))}</p>
+      <p>🧑‍💼 ${T('你是 {0} 任命的<b>副市長</b>（{1}出身），分管<b>{2}</b>。你分管的爛攤子可以直接督導局處處理；別人分管的，要建議市長或找另外兩位副市長協調。重大政策、人事、預算方向，市長拍板。', esc(BOSS.name), C.backgrounds[G.background].name, C.portfolios[G.portfolio].name)}</p>
+      <p>👥 ${T('另外兩位副市長是同事，也是對手：{0}（{1}）和{2}（{3}）。', C.rivals[0].name, C.rivals[0].desc, C.rivals[1].name, C.rivals[1].desc)}</p>
       <p>🗄️ ${T('前任做了八年，留下一整個<b>抽屜的爛攤子</b>。有些看起來很小，打開才知道很大；有些會連鎖，修了這個才發現那個。')}</p>
       <p>📣 ${T('老闆選前開了很多<b>政見</b>，每一個都要過議會、要發包、要剪綵。爛攤子會卡住政見。')}</p>
       <p>⏳ ${T('任期四年，切成 12 回合。每回合先處理一件突發事件，再<b>做 2 件事</b>：收爛攤子，或推政見。')}</p>
@@ -147,37 +159,38 @@ function victoryNight() {
     <div class="night">
       <div class="muted" style="color:#aaa">${T('選舉當晚・10 點')}</div>
       <div class="big">🎉 ${T('{0} 凍蒜！', esc(BOSS.name))}</div>
-      <p>${BOSS.fromP1 ? T('你在選戰篇幫 {0} 打贏的那場選戰，結果出來了。', esc(BOSS.name)) : T('{0} 當選 N City 新市長。', esc(BOSS.name))}</p>
-      <p>${T('彩帶、香檳、競選總部裡大家抱在一起哭。')}</p>
-      <p>${T('{0} 握著你的手：「從明天開始，你就是我的市長室主任。」', esc(BOSS.name))}</p>
-      <p style="color:#ffd166">${T('……明天早上 8 點，市長室開會。')}</p>
+      <p>${T('{0} 當選 N City 新市長。', esc(BOSS.name))}${BOSS.fromP1 ? T('（選戰那年，你們在一場座談會上見過一次。）') : ''}</p>
+      <p>${T('彩帶、香檳、競選總部裡大家抱在一起哭。你不在現場，在家看電視。')}</p>
+      <p>${T('晚上 11 點，你的手機響了。{0}：「我想請你來當副市長，幫我管{1}。」', esc(BOSS.name), C.portfolios[G.portfolio].name)}</p>
+      <p style="color:#ffd166">${T('……明天早上 8 點，市政會議。')}</p>
     </div>
     <button class="btn" id="go">${T('隔天早上 8 點 →')}</button>`);
   $('#go').onclick = cabinetScreen;
 }
 
 // ---------- 組閣：市長請你推薦人選，市長決定 ----------
-const SLOT_ASK = { vice: T('副市長，老闆不在的時候要有人扛。'), finance: T('財政局長，前任的帳要有人算清楚。'), works: T('工務局長，蓋一半的工程等著收拾。'), transport: T('交通局長，捷運延期、塞車，市民天天在罵。') };
+const MYSLOTS = () => C.cabinet.filter(s => C.portfolios[G.portfolio].slots.includes(s.id));
 function cabinetScreen() {
   const offer = cabinetOffer(C, G);
+  const CAB = MYSLOTS();
   let k = 0;
   const intro = () => {
     show(`<div class="hud"><div class="step">👉 ${T('看完按下面，開始推薦人選')}</div></div>
       <h2>${T('🗂️ 市長請你推薦人選')}</h2>
-      <div class="card intro"><p>${T('全市 30 多個局處，老闆沒時間一個一個面試。他請你幫忙整理名單、先篩一輪：每個位子挑一位你覺得最適合的，推薦給他決定。主計、人事、警察、政風四位，依法不是市長自己換的。')}</p>
-      ${C.cabinet.map(s => `<p><b>${s.name}</b>：${s.why}</p>`).join('')}
+      <div class="card intro"><p>${T('全市 30 多個局處，市長沒時間一個一個面試。你分管的局處，他請你整理名單、先篩一輪，每個位子推薦一位給他決定；其他局處由市長和另外兩位副市長處理。主計、人事、警察、政風四位，依法不是市長自己換的。')}</p>
+      ${MYSLOTS().map(s => `<p><b>${s.name}</b>：${s.why}</p>`).join('')}
 </div>
       <details class="card legend"><summary>${T('📖 各種人選來源的取捨')}</summary>${Object.values(C.cabinetTypes).map(t => `<p><b>${t.emoji} ${t.name}</b>：${t.desc}</p>`).join('')}</details>
       <button class="btn" id="go">${T('開始推薦 →')}</button>`);
     $('#go').onclick = () => slotScreen();
   };
   const slotScreen = () => {
-    const s = C.cabinet[k], list = offer[s.id];
+    const s = CAB[k], list = offer[s.id];
     let sel = null;
     const render = () => {
-      show(`<div class="hud"><div class="step">👉 ${sel ? T('按最下面「推薦給市長」') : T('點一位你想推薦的人（{0}／{1}）', k + 1, C.cabinet.length)}</div></div>
-        <div class="card ev"><span class="tag">${T('第 {0}／{1} 個位子', k + 1, C.cabinet.length)}</span><h2>${s.name}</h2>
-        <p>💬 ${esc(BOSS.name)}：「${SLOT_ASK[s.id]}你幫我找幾個人選。」</p><p class="hits">${s.hits}</p></div>
+      show(`<div class="hud"><div class="step">👉 ${sel ? T('按最下面「推薦給市長」') : T('點一位你想推薦的人（{0}／{1}）', k + 1, CAB.length)}</div></div>
+        <div class="card ev"><span class="tag">${T('第 {0}／{1} 個位子', k + 1, CAB.length)}</span><h2>${s.name}</h2>
+        <p>💬 ${esc(BOSS.name)}：「${s.name}，${s.why}。你幫我找幾個人選。」</p><p class="hits">${s.hits}</p></div>
         <p class="muted">${T('人才庫裡願意接這個燙手山芋的：')}</p>
         <div class="picks">${list.map(c => { const t = C.cabinetTypes[c.src]; const fit = c.fit && c.fit.includes(s.id); return `<button class="pick ${sel === c.id ? 'on' : ''} ${c.dream ? 'dream' : ''}" data-c="${c.id}"><b>${t.emoji} ${c.name}</b><span class="tag">${t.name}</span>${c.dream ? `<span class="tag red">${T('✨ 夢幻人選')}</span>` : ''}${fit ? `<span class="tag blue">${T('👍 適合這個位子')}</span>` : ''}${c.pro ? `<small class="pro">✅ ${c.pro}</small><small class="con">⚠️ ${c.con}</small>` : `<small>${c.line || ''}</small>`}</button>`; }).join('')}</div>
         <button class="btn" id="go" ${sel ? '' : 'disabled'}>${T('推薦給市長 →')}</button>`);
@@ -186,10 +199,10 @@ function cabinetScreen() {
     };
     const decide = cand => {
       const res = C.recommend(G, s.id, cand, list);
-      const next = () => { k++; k < C.cabinet.length ? slotScreen() : turnStart(); };
+      const next = () => { k++; k < CAB.length ? slotScreen() : turnStart(); };
       if (res.ok) {
         appoint(C, G, s.id, cand);
-        show(`<div class="hud"><div class="step">👉 ${T('按下面繼續')}</div></div><div class="card ev"><h2>${s.name}</h2><div class="res">💬 ${esc(BOSS.name)}：${res.line}<br>✅ ${T('{0} 上任。他做得好壞，會算在你頭上。', cand.name)}</div></div><button class="btn" id="go">${k + 1 < C.cabinet.length ? T('下一個位子 →') : T('就職，上工 →')}</button>`);
+        show(`<div class="hud"><div class="step">👉 ${T('按下面繼續')}</div></div><div class="card ev"><h2>${s.name}</h2><div class="res">💬 ${esc(BOSS.name)}：${res.line}<br>✅ ${T('{0} 上任。他做得好壞，會算在你頭上。', cand.name)}</div></div><button class="btn" id="go">${k + 1 < CAB.length ? T('下一個位子 →') : T('就職，上工 →')}</button>`);
         $('#go').onclick = next;
       } else {
         const pick = res.pick, pt = C.cabinetTypes[pick.src];
@@ -201,7 +214,7 @@ function cabinetScreen() {
           const win = G.rng() < 0.3 + G.stats.trust * 0.004;
           applyFx(C, G, { trust: win ? -3 : -6, stress: 3 });
           appoint(C, G, s.id, win ? cand : Object.assign({}, pick, { byYou: false }));
-          show(`<div class="hud"><div class="step">👉 ${T('按下面繼續')}</div></div><div class="card ev"><h2>${s.name}</h2><div class="res">${win ? T('老闆嘆了口氣：「好啦，聽你的。但出事你要負責。」') : T('老闆臉色一沉：「我說了，就他。」')}${fxHtml({ trust: win ? -3 : -6, stress: 3 })}</div></div><button class="btn" id="go">${k + 1 < C.cabinet.length ? T('下一個位子 →') : T('就職，上工 →')}</button>`);
+          show(`<div class="hud"><div class="step">👉 ${T('按下面繼續')}</div></div><div class="card ev"><h2>${s.name}</h2><div class="res">${win ? T('老闆嘆了口氣：「好啦，聽你的。但出事你要負責。」') : T('老闆臉色一沉：「我說了，就他。」')}${fxHtml({ trust: win ? -3 : -6, stress: 3 })}</div></div><button class="btn" id="go">${k + 1 < CAB.length ? T('下一個位子 →') : T('就職，上工 →')}</button>`);
           $('#go').onclick = next;
         };
       }
@@ -251,8 +264,8 @@ function workScreen() {
   const nth = C.actionsPerTurn - actionsLeft + 1;
   show(`${guide(T('第 {0} 件事（還剩 {1} 件）：點一張卡片', nth, actionsLeft))}
     <div class="grid">
-      ${open.map(d => { const def = C.drawer.find(x => x.id === d.id); return `<button class="topic ${d.fresh ? 'new' : ''} ${d.own ? 'own' : ''}" data-d="${d.id}"><span class="ic">${d.own ? '🧾' : '🗄️'}</span><b>${def.title}</b><small>${SIZE(d.size)}${d.known ? '' : '？'}${d.shelved >= 2 ? ' ⚠️' : ''}</small></button>`; }).join('')}
-      ${pls.map(p => { const def = C.pledges.find(x => x.id === p.id); return `<button class="topic pl" data-p="${p.id}"><span class="ic">${def.emoji}</span><b>${def.name}</b><small>${T('政見 {0}／{1}', p.step, C.pledgeSteps.length)}</small></button>`; }).join('')}
+      ${open.map(d => { const def = C.drawer.find(x => x.id === d.id), mine = isMine(C, G, d.id); return `<button class="topic ${d.fresh ? 'new' : ''} ${d.own ? 'own' : ''} ${mine ? 'mine' : ''}" data-d="${d.id}"><span class="ic">${d.own ? '🧾' : '🗄️'}</span><b>${def.title}</b><small>${mine ? T('✋ 你分管') : T('別人分管')}・${SIZE(d.size)}${d.known ? '' : '？'}${d.shelved >= 2 ? ' ⚠️' : ''}</small></button>`; }).join('')}
+      ${pls.map(p => { const def = C.pledges.find(x => x.id === p.id); return `<button class="topic pl" data-p="${p.id}"><span class="ic">${def.emoji}</span><b>${def.name}</b><small>${p.mine ? T('✋ 你分管・') : ''}${T('政見 {0}／{1}', p.step, C.pledgeSteps.length)}</small></button>`; }).join('')}
       <button class="topic rest" id="rest"><span class="ic">🛌</span><b>${T('請假一天')}</b><small>${T('壓力 −20、老闆信任 −2')}</small></button>
     </div>
     <p class="muted center">${T('🗄️ 前任的爛攤子　🧾 你們自己的　📣 政見')}</p>
@@ -279,7 +292,10 @@ function drawerSheet(id) {
     if (id === 'C' && a !== 'blame' && !G.flags.attachDone) { G.flags.attachDone = 1; return attachGame(found => { const extra = found ? { staff: 3 } : { staff: -2 }; applyFx(C, G, extra); const r = useDrawer(C, G, id, a); const res = C.attachments[Math.floor(Math.random() * C.attachments.length)]; afterAction(`<b>${def.title}</b><br>${found ? T('找到附件了！') : T('時間到，最後是工讀生找到的。')}<br>📎 ${res}` + fxHtml(Object.assign({}, r.fx, extra)), r.fx, 'reveal', r.opened); }); }
     const r = useDrawer(C, G, id, a);
     let m = `<b>${def.title}</b><br>`;
-    if (r.verdict === 'no') m += T('💬 市長看了你的建議：「再等等。」這件事這次沒動。');
+    if (r.note === 'coordfail') m += T('🤝 對方副市長說：「這件事我們局處另有規劃。」這次喬不動。');
+    else if (r.note === 'coord') m += T('🤝 協調成功，事情處理好了。記者會上，是另一位副市長在講。');
+    else if (r.verdict === 'no') m += T('💬 市長看了你的建議：「再等等。」這件事這次沒動。');
+    else if (a === 'do' && !r.verdict) m += T('✋ 你召集局處開會、盯進度，處理好了。');
     else if (a === 'do') m += (r.verdict === 'half' ? T('💬 市長同意了，但要求「穩一點」，多花了一些錢。') : T('💬 市長拍板，處理好了。')) + (r.note === 'oops' ? T('（自己人第一次出手，流程走錯，被記者抓到。）') : '');
     if (a === 'look') m += T('調查完了，真正的大小是 {0}。', SIZE(d.real));
     if (a === 'shortcut') m += T('打了幾通電話，事情一個下午就搞定了。沒有人問是怎麼辦到的。');
@@ -287,7 +303,8 @@ function drawerSheet(id) {
     afterAction(m + fxHtml(r.fx), r.fx, a === 'blame' ? 'blame' : moodOf(r.fx), r.opened);
   };
   sheet(head, def.text, [
-    { t: `<span class="kind ka">${KIND.a}</span>` + T('建議市長拍板處理'), d: d.blocked ? T('另一件事剛用掉這筆錢，下回合再說') : T('預算 −{0}{1}', drawerCost(C, G, d), d.costMul > 1 ? T('（預算被搶走一部分，變貴了）') : ''), off: !!d.blocked, go: act('do') },
+    ...(isMine(C, G, id) ? [] : [{ t: `<span class="kind kc">${T('🤝 找負責的副市長')}</span>` + T('協調他處理'), d: T('不用市長拍板；成了，功勞多半算他的；可能喬不動'), go: act('coord') }]),
+    { t: isMine(C, G, id) ? `<span class="kind ks">${KIND.s}</span>` + T('你直接督導局處處理') : `<span class="kind ka">${KIND.a}</span>` + T('建議市長拍板處理'), d: d.blocked ? T('另一件事剛用掉這筆錢，下回合再說') : T('預算 −{0}{1}', drawerCost(C, G, d), d.costMul > 1 ? T('（預算被搶走一部分，變貴了）') : ''), off: !!d.blocked, go: act('do') },
     { t: `<span class="kind ks">${KIND.s}</span>` + T('你私下去喬（走後門）'), d: T('預算 −{0}，立刻搞定；清白會掉，代價晚點來', Math.round(drawerCost(C, G, d) / 2)), go: act('shortcut') },
     { t: `<span class="kind ks">${KIND.s}</span>` + T('你先調查清楚'), d: d.known ? T('已經知道真正多大了') : T('不花錢，看清楚真正有多大'), go: act('look') },
     { t: `<span class="kind ka">${KIND.a}</span>` + T('建議市長說是前任的'), d: d.own ? T('這是你們自己的，沒辦法甩') : late ? T('百日過了，現在甩會被罵') : T('民意 +，但事情還在'), off: !!d.own, go: act('blame') }
@@ -300,7 +317,7 @@ function pledgeSheet(pid) {
   const ribbon = chk.step.id === 'ribbon';
   sheet(`<span class="tag blue">${T('📣 政見')}</span><h2>${def.emoji} ${def.name}</h2>${steps}`,
     chk.block ? T('⛔ 主計處長：「{0}」沒處理之前，這筆預算依法不能編。', C.drawer.find(x => x.id === chk.block).title) : ribbon ? T('完工了！里長們都到了，就等剪綵。') : T('下一步：{0}。', chk.step.name),
-    [{ t: ribbon ? `<span class="kind ka">${KIND.a}</span>` + T('安排市長去剪綵（小遊戲）') : `<span class="kind ka">${KIND.a}</span>` + T('建議市長推動「{0}」', chk.step.name), d: chk.block ? T('會被退回') : (chk.cost ? T('預算 −{0}・', chk.cost) : '') + T('可能失敗（約 {0}%）', Math.round(chk.fail * 100)), go: () => {
+    [{ t: ribbon ? `<span class="kind ka">${KIND.a}</span>` + T('安排市長去剪綵（小遊戲）') : p.mine ? `<span class="kind ks">${KIND.s}</span>` + T('你直接督導推動「{0}」', chk.step.name) : `<span class="kind ka">${KIND.a}</span>` + T('建議市長推動「{0}」', chk.step.name), d: chk.block ? T('會被退回') : (chk.cost ? T('預算 −{0}・', chk.cost) : '') + T('可能失敗（約 {0}%）', Math.round(chk.fail * 100)), go: () => {
       if (ribbon) return ribbonGame(ok => { const r = pushPledge(C, G, pid, ok); afterAction(`<b>${def.emoji} ${def.name}</b><br>${ok ? T('✂️ 剪得漂亮！政見兌現。') : T('剪歪了，里長們笑成一團。下次再剪。')}` + fxHtml(r.fx), r.fx, ok ? 'pledge' : 'down'); });
       const r = pushPledge(C, G, pid, undefined, true);
       let m = `<b>${def.emoji} ${def.name}：${r.step.name}</b><br>`;
@@ -461,7 +478,7 @@ function endingScreen() {
       </div>
       <button class="btn" id="share">${T('📤 分享結局截圖')}</button>
       <button class="btn ghost" id="code">${T('🔗 複製系列存檔碼（之後的篇章可以接續）')}</button>
-      <button class="btn" id="again">${T('🔁 再當一次市長室主任')}</button>
+      <button class="btn" id="again">${T('🔁 再當一次副市長')}</button>
       <button class="btn ghost" id="gal">${T('📚 圖鑑')}</button>
     </div>`);
   $('#code').onclick = () => { const c = encodeSave(save); (navigator.clipboard ? navigator.clipboard.writeText(c) : Promise.reject()).then(() => { $('#code').textContent = T('✅ 已複製'); }).catch(() => prompt(T('複製這串存檔碼：'), c)); };

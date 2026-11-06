@@ -166,3 +166,6 @@ h2 { font-size: 21px; margin: 6px 0 10px; }
 .verdict.half { background: #fff6df; }
 .verdict.no { background: #fbe0dc; }
 .verdict b { display: block; margin-top: 2px; }
+.statrow.me .stats { grid-template-columns: repeat(5, 1fr); }
+.kind.kc { background: #e8f4ec; color: #2e7d4f; }
+.topic.mine { border-color: #e0a526; }

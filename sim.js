@@ -2,9 +2,10 @@
 const E = require('./core/engine.js'), C = require('./careers/mayor-office/data.js');
 const TYPES = Object.keys(C.cabinetTypes);
 function play(seed, strat) {
-  const g = E.newRun(C, { seed }); const r = E.makeRng(seed * 7 + 1);
+  const bgs = Object.keys(C.backgrounds), pfs = Object.keys(C.portfolios);
+  const g = E.newRun(C, { seed, background: bgs[seed % bgs.length], portfolio: pfs[Math.floor(seed / 4) % pfs.length] }); const r = E.makeRng(seed * 7 + 1);
   const offer = E.cabinetOffer(C, g);
-  for (const s of C.cabinet) {
+  for (const s of C.cabinet.filter(x => offer[x.id])) {
     const o = offer[s.id];
     const want = strat === 'random' ? o[Math.floor(r() * o.length)] : (o.find(c => c.fit && c.fit.includes(s.id) && c.src !== 'acting') || o.find(c => c.src !== 'acting') || o[0]);
     const res = C.recommend(g, s.id, want, o);
@@ -27,6 +28,7 @@ function play(seed, strat) {
       if (strat === 'random') act = ['do', 'look', 'shortcut', 'blame'][Math.floor(r() * 4)];
       else if (strat === 'gray') act = 'shortcut';
       else { d = open.slice().sort((x, y) => (x.known - y.known) || (y.real - x.real))[0]; act = !d.known && r() < 0.5 ? 'look' : (g.stats.budget > E.drawerCost(C, g, d) + 8 ? 'do' : (E.ruleShift(C, g) ? 'shelve' : 'blame')); }
+      if (act === 'do' && !E.isMine(C, g, d.id) && strat !== 'random' && r() < 0.5) act = 'coord';
       if (act === 'do' && d.blocked) act = 'look';
       E.useDrawer(C, g, d.id, act);
     }
