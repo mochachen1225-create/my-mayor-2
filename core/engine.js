@@ -176,7 +176,7 @@ function openChain(career, g, d) {
 const ADVISE_ACTS = ['do', 'blame'];
 // 你分管的爛攤子：可以直接督導局處，不用建議市長
 const isMine = (career, g, id) => !!(g.portfolio && career.portfolios && career.portfolios[g.portfolio].drawer.includes(id)) || !!((g.drawer.find(d => d.id === id) || {}).own && g.portfolio === 'works' && id === 'Y1');
-function useDrawer(career, g, id, act) {
+function useDrawer(career, g, id, act, choice) {
   const d = g.drawer.find(x => x.id === id), def = career.drawer.find(x => x.id === id);
   let fx = {}, opened = [], note = '';
   let verdict = null;
@@ -191,7 +191,13 @@ function useDrawer(career, g, id, act) {
     if (verdict === 'no') { const f = { trust: -1, stress: 2 }; applyFx(career, g, f); g.log.push({ turn: g.turn, kind: 'drawer', id, act, verdict }); return { fx: f, hits: [], opened: [], note: 'no', verdict }; }
   }
   if (act === 'do') {
-    fx = Object.assign({ budget: -Math.round(drawerCost(career, g, d) * (verdict === 'half' ? 1.3 : 1)), staff: -2 }, def.fx);
+    if (def.choices && choice != null) {
+      // 這份爛攤子有自己的處理方式：用選到的那一個的效果（成本已經算在裡面）
+      const c = def.choices[choice];
+      fx = Object.assign({ staff: -2 }, typeof c.fx === 'function' ? c.fx(g) : c.fx);
+      if (verdict === 'half') for (const k in fx) fx[k] = Math.round(fx[k] / 2);
+      note = 'choice';
+    } else fx = Object.assign({ budget: -Math.round(drawerCost(career, g, d) * (verdict === 'half' ? 1.3 : 1)), staff: -2 }, def.fx);
     // 自己人第一次處理自己領域的公文會出包
     const slot = slotOf(career, d.id);
     if (slot && g.cabinet[slot] === 'loyal' && !g.flags['oops_' + slot]) { g.flags['oops_' + slot] = 1; fx.pop = (fx.pop || 0) - 4; note = 'oops'; }

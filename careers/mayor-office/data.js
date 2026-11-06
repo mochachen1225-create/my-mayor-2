@@ -82,7 +82,7 @@ const CAREER_MAYOR_OFFICE = {
     { id: 'transport', name: T('交通局長'), why: T('塞車、公車路線，市民天天在罵'), hits: T('影響：政見剪綵、公車政見'), domain: ['ribbon'] },
     { id: 'metro', name: T('捷運工程局長'), why: T('延伸線延宕，這次沒有前任可以怪'), hits: T('影響：捷運延伸線'), domain: ['Y1'] },
     { id: 'finance', name: T('財政局長'), why: T('前任的帳要有人算清楚'), hits: T('影響：上市案、分手費、政見審預算'), domain: ['A', 'C', 'K', 'budget'] },
-    { id: 'socialw', name: T('社會局長'), why: T('敬老金只編半年，老人家等著領'), hits: T('影響：敬老金、社宅'), domain: ['F', 'Y2'] },
+    { id: 'socialw', name: T('社會局長'), why: T('前任選前加碼的敬老福利，錢還沒著落，長輩已經在問了'), hits: T('影響：敬老金、社宅'), domain: ['F', 'Y2'] },
     { id: 'edu', name: T('教育局長'), why: T('免費營養午餐下學期就要開辦'), hits: T('影響：營養午餐'), domain: ['H'] },
     { id: 'culturec', name: T('文化局長'), why: T('只剩冷氣在上班的紀念館'), hits: T('影響：紀念館'), domain: ['D'] },
     { id: 'tourism', name: T('觀光傳播局長'), why: T('熱潮退了的天空步道要救'), hits: T('影響：天空步道'), domain: ['E'] },
@@ -222,7 +222,14 @@ const CAREER_MAYOR_OFFICE = {
     { id: 'B', look: 1, real: 5, fx: { pop: 3 }, case: 'A12', title: T('綁十年的 LED 路燈合約'), text: T('附件找到了：前任簽了十年的路燈採購加維護。合約寫「亮度不低於 30%」，議員問：「你有聽過跟手機廠商綁十年的嗎？」') },
     { id: 'D', start: 1, look: 3, real: 3, conflict: ['E'], conflictKind: 'cost', fx: { pop: 2 }, case: 'A8', title: T('只剩冷氣在上班的紀念館'), text: T('前任辦博覽會蓋的紀念館，展期結束後幾乎沒人來，每個月電費照付，大家說「只剩冷氣在上班」。') },
     { id: 'E', start: 1, look: 2, real: 4, conflict: ['D'], conflictKind: 'cost', fx: { pop: 3, council: 3 }, case: 'A19', title: T('熱潮退了的天空步道'), text: T('開幕時排隊兩小時，現在沒人來。維修封閉半年，議員拍到工地裡只有一台怪手在睡覺。') },
-    { id: 'F', start: 1, look: 2, real: 3, chain: ['G'], conflict: ['H'], conflictKind: 'block', fx: { pop: 3 }, case: 'B17', title: T('選前加碼的敬老金'), text: T('前任選前宣布敬老金加碼，預算書上只編了半年，社福預算一年長了 24%。') },
+    { id: 'F', start: 1, look: 2, real: 3, chain: ['G'], conflict: ['H'], conflictKind: 'block', fx: { pop: 3 }, case: 'B17／A14', title: T('選前加碼的敬老福利'), text: T('前任選前宣布敬老卡加碼：點數變多、可搭的交通變多，明年起實施。社福預算成長兩成多，議員質疑是選前補票，財源還沒著落。'),
+      // 這份爛攤子有自己的處理方式（取代一般的「處理掉」）
+      choices: [
+        { t: T('照發'), d: T('長輩開心；財政吃緊'), fx: { pop: 5, budget: -10 } },
+        { t: T('縮水'), d: T('省錢；長輩罵、被說翻臉不認帳'), fx: { pop: -6, budget: 4, council: -2 } },
+        { t: T('跟中央爭取補助'), d: T('不用自己出錢；慢，看關係'), fx: g => g.rng() < 0.5 + (g.stats.network || 0) / 200 ? { budget: 4, pop: 2, stress: 3 } : { stress: 5, pop: -2 }, r: g => T('中央的回覆要看你們平常的關係。') },
+        { t: T('改成排富'), d: T('省錢、比較公平；罵聲很大（A14）'), fx: { budget: 6, pop: -4, council: 2 } }
+      ] },
     { id: 'G', look: 1, real: 5, fx: { council: 8 }, case: 'A13', title: T('改大的工程，差額自己出'), text: T('前任把鐵路高架改成地下化，中央只補原本高架的錢，差額要市府自籌，而且已經發包了。') },
     { id: 'H', start: 1, look: 3, real: 4, conflict: ['F'], conflictKind: 'block', fx: { pop: 3, staff: 4 }, case: 'B16', title: T('免費營養午餐'), text: T('前任宣布國中小午餐全面免費，經費寫「中央補助」。議員問：「中央沒來怎麼辦？」開辦後團膳又流標。') },
     { id: 'I', start: 1, look: 3, real: 5, fx: { pop: 4, council: 2 }, case: 'A2', title: T('蓋一半的巨型場館 BOT'), text: T('前任簽的 BOT 巨型場館蓋到一半停工。解約要賠，續蓋要幫廠商背書，監察院的來函已經在桌上。') },

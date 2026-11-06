@@ -88,7 +88,7 @@ function titleScreen() {
     <button class="btn" id="go">${T('開始 →')}</button>
     <button class="btn ghost" id="gal">${T('📚 圖鑑')}</button>
     <p class="muted center">${T('《我推的市長》系列 Part 2・一局約 8 分鐘<br>人物、政黨、城市全部虛構')}</p>
-    <p class="muted center">${T('摩卡與貓貓小隊')}・v0.6.2</p>`);
+    <p class="muted center">${T('摩卡與貓貓小隊')}・v0.6.3</p>`);
   $('#go').onclick = setupScreen;
   $('#gal').onclick = () => galleryScreen(titleScreen);
 }
@@ -288,10 +288,14 @@ function drawerSheet(id) {
   d.fresh = false;
   const late = ruleShift(C, G);
   const head = `${d.own ? `<span class="tag">${T('🧾 你們自己的')}</span>` : `<span class="tag">${T('🗄️ 前任留下的')}</span>`}${d.shelved >= 2 ? `<span class="tag red">${T('放了 {0} 回合，越來越大', d.shelved)}</span>` : ''}<h2>${def.title}</h2>`;
-  const act = a => () => {
+  const act = (a, choice) => () => {
+    // 有自己處理方式的爛攤子：先選怎麼處理
+    if (a === 'do' && def.choices && choice == null) return sheet(head, def.text, def.choices.map((c, i) => ({ t: c.t, d: c.d, go: act('do', i) })));
     if (id === 'C' && a !== 'blame' && !G.flags.attachDone) { G.flags.attachDone = 1; return attachGame(found => { const extra = found ? { staff: 3 } : { staff: -2 }; applyFx(C, G, extra); const r = useDrawer(C, G, id, a); const res = C.attachments[Math.floor(Math.random() * C.attachments.length)]; afterAction(`<b>${def.title}</b><br>${found ? T('找到附件了！') : T('時間到，最後是工讀生找到的。')}<br>📎 ${res}` + fxHtml(Object.assign({}, r.fx, extra)), r.fx, 'reveal', r.opened); }); }
-    const r = useDrawer(C, G, id, a);
+    const r = useDrawer(C, G, id, a, choice);
     let m = `<b>${def.title}</b><br>`;
+    if (r.note === 'choice' && def.choices[choice].r) m += txt(def.choices[choice].r) + '<br>';
+    if (r.note === 'choice') m += T('決定：{0}。', def.choices[choice].t) + '<br>';
     if (r.note === 'coordfail') m += T('🤝 對方副市長說：「這件事我們局處另有規劃。」這次喬不動。');
     else if (r.note === 'coord') m += T('🤝 協調成功，事情處理好了。記者會上，是另一位副市長在講。');
     else if (r.verdict === 'no') m += T('💬 市長看了你的建議：「再等等。」這件事這次沒動。');
