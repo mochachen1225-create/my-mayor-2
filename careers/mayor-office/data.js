@@ -7,6 +7,8 @@ const CAREER_MAYOR_OFFICE = {
   title: T('我推的市長：上任篇'),
   subtitle: T('前任的抽屜'),
   tagline: T('你以為選上就萬歲了？不，是大坑的開始。'),
+  taglineMore: [T('選舉結束那晚，市長打來請你當副市長。'), T('這個坑，現在你也有份。')],
+  // 英文版（之後放進 i18n.en.js）：You thought winning was the finish line? Nope. It's the edge of a sinkhole. / On election night, the new mayor called and asked you to be deputy mayor. / Now part of this sinkhole is yours.
   role: T('副市長'),
   // ===== 你的背景（開場選）：起始數值不同 =====
   backgrounds: {

@@ -83,7 +83,7 @@ function titleScreen() {
       <div class="drawer-art">🗄️</div>
       <h1>${T('我推的市長')}</h1>
       <div class="sub">${T('上任篇')}・${C.subtitle}</div>
-      <p class="tagline">${C.tagline}</p>
+      <p class="tagline">${C.tagline}<br>${C.taglineMore.join('<br>')}</p>
     </div>
     <button class="btn" id="go">${T('開始 →')}</button>
     <button class="btn ghost" id="gal">${T('📚 圖鑑')}</button>
