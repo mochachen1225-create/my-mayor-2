@@ -24,12 +24,24 @@ const CAREER_MAYOR_OFFICE = {
     { label: T('第 4 年・連任前夕'), note: T('終局') }
   ],
   stats: [
-    { id: 'pop', emoji: '😊', name: T('民意'), start: 45, low: 10, high: 90 },
-    { id: 'council', emoji: '🏛️', name: T('議會'), start: 50, low: 10, high: 90 },
-    { id: 'budget', emoji: '💰', name: T('預算'), start: 60, low: 10, high: 90 },
-    { id: 'staff', emoji: '💪', name: T('市府士氣'), start: 50, low: 10, high: 90 },
-    { id: 'trust', emoji: '🤝', name: T('老闆信任'), start: 60, low: 10, high: 101 }
+    // 第一條「市府」：施政相關；爆表會累積成「府會大亂」
+    { id: 'pop', group: 'city', emoji: '😊', name: T('滿意度'), start: 45, low: 10, high: 90 },
+    { id: 'council', group: 'city', emoji: '🏛️', name: T('議會'), start: 50, low: 10, high: 90 },
+    { id: 'budget', group: 'city', emoji: '💰', name: T('財政'), start: 60, low: 10, high: 90 },
+    { id: 'staff', group: 'city', emoji: '💪', name: T('士氣'), start: 50, low: 10, high: 90 },
+    // 第二條「你」：市長室主任自己的
+    { id: 'trust', group: 'me', emoji: '🤝', name: T('老闆信任'), start: 60, low: 10, high: 101 },
+    { id: 'integrity', group: 'me', emoji: '🧼', name: T('清白'), start: 85, low: 35, high: 101 },
+    { id: 'stress', group: 'me', emoji: '😵', name: T('壓力'), start: 20, low: -1, high: 90 },
+    { id: 'network', group: 'me', emoji: '📇', name: T('人脈'), start: 30, low: -1, high: 101 }
   ],
+  // 走後門：成本減半、事情變快；代價晚一點來
+  shortcut: { fx: { integrity: -13, network: 4, stress: -2 }, later: { in: 3, fx: { council: -8, pop: -6 }, text: T('議員爆料：「這件事是怎麼喬的？」') } },
+  pledgeGray: {
+    budget: { name: T('🤝 私下跟議員交換'), fx: { integrity: -6, network: 3 }, later: { in: 2, fx: { council: -4, budget: -8 }, text: T('答應議員的地方建設要兌現了。') } },
+    tender: { name: T('📞 打給認識的廠商來投'), fx: { integrity: -10, network: 4 }, later: { in: 3, fx: { pop: -6, integrity: -5 }, text: T('記者發現：得標廠商跟市府高層很熟。') } },
+    ribbon: { name: T('📸 先辦動土典禮再說'), fx: { pop: 3 }, later: { in: 2, fx: { pop: -5 }, text: T('動土典禮過了半年，工地還是空的。') } }
+  },
   blameEarly: { pop: 5 },
   blameLate: { pop: -8, council: -3 },
 
@@ -129,7 +141,8 @@ const CAREER_MAYOR_OFFICE = {
     { id: 'typhoon', special: 1, title: T('颱風假'), text: T('晚上 10 點，雨不大，隔壁縣市已經宣布放假。'), opts: [
       { t: T('🌀 放！'), fx: { pop: 6, council: -2 }, r: T('隔天出大太陽，脆上一片「謝謝市長」。') },
       { t: T('☀️ 不放'), fx: { council: 3, pop: -8 }, r: T('隔天中午突然暴雨。') },
-      { t: T('📞 先打給氣象專家'), fx: { staff: -2, pop: -2 }, r: T('決定晚了一小時，兩邊都有人罵。') }] },
+      { t: T('📞 先打給氣象專家'), fx: { staff: -2, pop: -2 }, r: T('決定晚了一小時，兩邊都有人罵。') },
+      { t: T('📸 先發「市長坐鎮」照片'), fx: { pop: 5, stress: -2 }, later: { in: 1, fx: { pop: -7 }, text: T('有人發現「坐鎮」照片是去年拍的。') }, r: T('照片很有氣勢，脆上一片「辛苦了」。') }] },
     { id: 'interpellation', title: T('議會總質詢'), text: T('反對黨議員拿著前任的預算書，要你「解釋清楚」。'), opts: [
       { t: T('📚 熬夜讀完預算書，逐條回答'), fx: { council: 6, staff: -4 }, r: T('議員翻了三頁就放棄了。') },
       { t: T('🙇 「這是前任的事，我們會檢討」'), fx: (g, late) => late ? { council: -6 } : { pop: 2 }, r: T('議員冷笑：「又是前任？」') },
@@ -141,7 +154,8 @@ const CAREER_MAYOR_OFFICE = {
     { id: 'mascots', title: T('吉祥物大軍'), text: T('前任讓每個局處各做了一隻吉祥物，總共 14 隻，活動結束後全部塞在倉庫，布偶裝開始發霉。'), opts: [
       { t: T('🗳️ 辦網路票選，只留一隻當市府代表'), fx: { pop: 5, staff: -1 }, r: T('落選的局處很不爽，說它們的吉祥物比較可愛。') },
       { t: T('🧸 全部捐給幼兒園'), fx: { pop: 3, budget: 2 }, r: T('小朋友很開心，倉庫也空了。') },
-      { t: T('🐣 再做第 15 隻代表新市府'), fx: { budget: -6, pop: -3 }, r: T('脆上嘲笑了一整週。') }] },
+      { t: T('🐣 再做第 15 隻代表新市府'), fx: { budget: -6, pop: -3 }, r: T('脆上嘲笑了一整週。') },
+      { t: T('🎟️ 辦見面會、收門票'), fx: { budget: 6, pop: 2 }, later: { in: 2, fx: { pop: -5, council: -3 }, text: T('議員質詢：「吉祥物是市府財產，收的門票去哪了？」') }, r: T('來了好多小朋友，收入不錯。') }] },
     { id: 'metro', title: T('捷運開通日'), text: T('新線一延再延，但開通日已經印在 10 萬張紀念票卡上。'), opts: [
       { t: T('🎫 照原日期「試營運」'), fx: { pop: -2 }, r: T('第一天停駛兩次。') },
       { t: T('📅 公開延期，重印票卡'), fx: { budget: -5, council: 3 }, r: T('議會稱讚你誠實。') },
@@ -153,7 +167,8 @@ const CAREER_MAYOR_OFFICE = {
     { id: 'ribbon', title: T('里長要剪綵'), text: T('里長打來：「新的路燈裝好了，市長一定要來剪綵！」只有一支路燈。'), opts: [
       { t: T('✂️ 安排老闆去剪'), fx: { pop: 3, trust: -2 }, r: T('剪綵比路燈還亮。') },
       { t: T('🙅 婉拒，改寄賀卡'), fx: { pop: -3 }, r: T('里長在地方群組抱怨了三天。') },
-      { t: T('🎤 你自己去代打'), fx: { pop: 1, staff: -2 }, r: T('里長：「你是誰？」') }] },
+      { t: T('🎤 你自己去代打'), fx: { pop: 1, staff: -2 }, r: T('里長：「你是誰？」') },
+      { t: T('📸 找同黨議員一起剪、順便拉票'), fx: { council: 4, network: 3, integrity: -3 }, later: { in: 2, fx: { pop: -4 }, text: T('脆上：「一支路燈剪三次綵，用的是市府的經費？」') }, r: T('剪綵變成小型造勢，議員很滿意。') }] },
     { id: 'prevcall', title: T('前任來電'), text: T('前任市長打電話來「關心」：「那個會展中心，其實當初是有規劃的啦。」'), opts: [
       { t: T('📞 客氣聽完，請教當初的規劃'), fx: { council: 3, trust: -2 }, r: T('聽了 47 分鐘，規劃是一張餐巾紙。') },
       { t: T('📵 轉給秘書長'), fx: { staff: -2 }, r: T('秘書長跟前任聊得比你還開心。') },
@@ -174,7 +189,8 @@ const CAREER_MAYOR_OFFICE = {
     { id: 'scholarquit', special: 1, title: T('局長「回學校了」'), text: T('學者局長在議會被罵了一個下午，晚上傳訊息給你：「我覺得我還是比較適合教書。」'), opts: [
       { t: T('☕ 約他吃飯，好好慰留'), fx: { staff: 2, trust: -2 }, r: T('他答應再撐三個月，但開會時一直看手錶。') },
       { t: T('👋 尊重他，找人代理'), fx: g => { const k = Object.keys(g.cabinet).find(x => g.cabinet[x] === 'scholar'); if (k) g.cabinet[k] = 'acting'; return { pop: -4 }; }, r: T('記者寫：「新市府首位閣員請辭」。') },
-      { t: T('🎤 請老闆公開挺他'), fx: { pop: 3, council: -4 }, r: T('議員說老闆「護短」。') }] },
+      { t: T('🎤 請老闆公開挺他'), fx: { pop: 3, council: -4 }, r: T('議員說老闆「護短」。') },
+      { t: T('📰 放消息說他是被議會逼走的'), fx: { pop: 4, integrity: -4 }, later: { in: 2, fx: { council: -7 }, text: T('議員查到消息是市長室放的。') }, r: T('脆上同情學者局長，一起罵議會。') }] },
     { id: 'holdoverleak', special: 1, title: T('順便報告'), text: T('你發現前朝留任的局長，每週都跟前任吃一次飯，「順便報告」市府的事。'), opts: [
       { t: T('🗣️ 私下跟他談清楚'), fx: { staff: -2, trust: 2 }, r: T('他說：「我只是去關心老長官。」之後吃飯改成兩週一次。') },
       { t: T('🔁 把他調去比較不重要的位子'), fx: { staff: -6, council: -2 }, r: T('局處裡開始流傳「新市府在清算」。') },
@@ -237,11 +253,13 @@ const CAREER_MAYOR_OFFICE = {
     { id: 'lunarny', special: 1, title: T('春節發紅包'), text: T('過年了，老闆要去市場發紅包，每個局處都要派人陪同。抽屜裡的公文還在等。'), opts: [
       { t: T('🧧 全員出動陪發紅包'), fx: { pop: 5, staff: -4 }, r: T('排隊排到巷口，公文排到明年。') },
       { t: T('🗂️ 留一半人在辦公室'), fx: { pop: 2, staff: 2 }, r: T('值班的同事收到老闆的紅包，很感動。') },
-      { t: T('🍊 只發橘子不發紅包'), fx: { pop: -2, budget: 3 }, r: T('脆上：「新市長很節省？」') }] },
+      { t: T('🍊 只發橘子不發紅包'), fx: { pop: -2, budget: 3 }, r: T('脆上：「新市長很節省？」') },
+      { t: T('📸 拍完照就走'), fx: { pop: 4, stress: -3 }, later: { in: 2, fx: { pop: -5 }, text: T('攤商在電視上說：「市長拍完照就走了，紅包是秘書發的。」') }, r: T('照片很溫馨，十分鐘就收工。') }] },
     { id: 'budgetseason', special: 1, title: T('預算季：議會審總預算'), text: T('議會開始審明年的總預算，每個議員都有想要的東西。'), opts: [
       { t: T('🤝 逐一拜會議員'), fx: { council: 8, staff: -3, trust: -2 }, r: T('你喝了 27 杯茶，記住了 27 個路燈的位置。') },
       { t: T('📊 公開預算，讓市民一起看'), fx: { pop: 5, council: -4 }, r: T('議員很不高興，但市民很高興。') },
-      { t: T('✂️ 主動先刪自己的預算'), fx: { council: 4, budget: -6 }, r: T('議會刪不到東西，有點錯愕。') }] },
+      { t: T('✂️ 主動先刪自己的預算'), fx: { council: 4, budget: -6 }, r: T('議會刪不到東西，有點錯愕。') },
+      { t: T('🤝 答應議員的地方建設換預算'), fx: { council: 12, network: 4 }, later: { in: 2, fx: { budget: -12, pop: -2 }, text: T('答應議員的 27 個地方建設，帳單一起來了。') }, r: T('預算一刀未刪，全數通過。') }] },
     { id: 'anniversary', special: 1, title: T('跨年＋就職一週年'), text: T('跨年晚會要辦嗎？老闆想順便慶祝就職一週年。'), opts: [
       { t: T('🎆 辦大的'), fx: { pop: 6, budget: -10 }, r: T('煙火很美，帳單很長。') },
       { t: T('🕯️ 低調辦，錢拿去做政見'), fx: { pop: -2, budget: 4 }, r: T('脆上：「今年跨年怎麼這麼安靜？」') },
@@ -275,11 +293,32 @@ const CAREER_MAYOR_OFFICE = {
       { t: T('🛡️ 幫他辯護'), fx: { council: -6, budget: -6, trust: 4 }, r: T('脆上梗圖洗版：「打開冰箱也看到市長」。') },
       { t: T('🗣️ 勸他把錢拿去做政見'), fx: g => { g.flags.portraitFixed = 1; return { trust: -6, budget: 6 }; }, r: T('他答應了，但要求政見完工時要有他的臉。') },
       { t: T('😶 裝沒看到'), fx: { budget: -8, pop: -3 }, r: T('連防災手冊封面都是他。') }] },
+    // ===== 主任自己的誘惑（收了短期有用，清白會掉）=====
+    { id: 'tm_dinner', title: T('廠商請吃飯'), text: T('一家常跟市府合作的廠商約你吃飯：「主任辛苦了，只是交個朋友。」'), opts: [
+      { t: T('🍽️ 去吃，順便收下伴手禮'), fx: { network: 8, integrity: -10, stress: -4 }, r: T('飯很好吃，伴手禮很重。') },
+      { t: T('🙅 婉拒'), fx: { network: -3, stress: 2 }, r: T('廠商說：「主任很有原則喔。」語氣有點冷。') },
+      { t: T('📋 照規定登錄，約在辦公室談'), fx: { integrity: 3, network: -5, stress: 2 }, r: T('政風處給你按了一個讚。') }] },
+    { id: 'tm_relative', title: T('親戚想標案'), text: T('你表哥開了一家小工程行，打電話來：「市府那個人行道的案子，你幫我問一下嘛。」'), opts: [
+      { t: T('📞 幫他打聲招呼'), fx: { network: 6, integrity: -15 }, later: { in: 3, fx: { pop: -8, integrity: -5 }, text: T('記者查到：得標的工程行老闆，是市長室主任的表哥。') }, r: T('承辦說：「好的，主任，我了解。」') },
+      { t: T('🙂 請他照程序投標'), fx: { network: -3 }, r: T('表哥說你「當官了就不認親戚」。') },
+      { t: T('📝 主動登錄利益迴避'), fx: { integrity: 5, stress: 3, network: -4 }, r: T('過年時，你被分到離表哥最遠的那一桌。') }] },
+    { id: 'tm_envelope', title: T('一個信封'), text: T('有人把一個信封放在你桌上：「我們的案子卡很久了，麻煩主任幫忙『加速』一下。」'), opts: [
+      { t: T('✉️ 收下，幫他催'), fx: { network: 6, integrity: -20, staff: 3 }, later: { in: 3, fx: { integrity: -10 }, text: T('那個案子的承辦被問：「是誰叫你先辦的？」') }, r: T('案子三天就跑完了。') },
+      { t: T('↩️ 原封退回'), fx: { stress: 2 }, r: T('對方說：「主任誤會了，那是點心券。」') },
+      { t: T('🚨 退回，並通報政風'), fx: { integrity: 5, network: -6, stress: 3 }, r: T('局處之間開始傳：「市長室主任不好惹。」') }] },
+    { id: 'probe', special: 1, title: T('政風處來找你'), text: T('政風處長敲你辦公室的門：「主任，有幾件事想請你說明一下。」'), opts: [
+      { t: T('🙇 全部說清楚'), fx: g => { g.flags.confessed = 1; return { integrity: 15, trust: -10, network: -10, stress: 8 }; }, r: T('說完之後，你覺得輕鬆了一點。') },
+      { t: T('📞 請老闆幫忙擋'), fx: g => { g.flags.covered = 1; return { trust: g.trait === 'corrupt' ? 6 : -10, stress: -4 }; }, r: g => g.trait === 'corrupt' ? T('老闆說：「放心，我來處理。」你知道這不是好消息。') : T('老闆看著你：「你要我擋什麼？」') },
+      { t: T('🙅 否認，說是誤會'), fx: g => { g.flags.denied = 1; return { stress: 10 }; }, r: T('政風處長點點頭，在本子上寫了一行字。') }] },
+    { id: 'burnout', special: 1, title: T('你在辦公室昏倒了'), text: T('連續加班好幾個月，你在市政會議上眼前一黑。醒來時在醫院，手機有 87 通未接來電。'), opts: [
+      { t: T('🛌 請假兩週，好好休息'), fx: { stress: -45, trust: -6, staff: -3 }, r: T('兩週後回來，抽屜又滿了一點，但你好多了。') },
+      { t: T('📱 在病床上繼續回訊息'), fx: g => { g.flags.burnouts = (g.flags.burnouts || 0) + 1; return { stress: -15, trust: 4 }; }, r: T('護理師沒收了你的手機。') }] },
     { id: 'patronage', special: 1, title: T('酬庸位子：董事改選'), text: g => T('「N 城果菜運銷公司」和「N 城捷運開發公司」的董事長、總經理要改選。黨部、選戰團隊、議員都來要人。{0}', g.trait === 'showoff' || g.trait === 'ear' ? T('老闆說：「這些位子要給自己人，大家辛苦了。」') : ''), opts: [
       { t: T('🎗️ 給黨部推薦的人'), fx: g => ({ council: Math.round(6 * ((CAREER_MAYOR_OFFICE.councils[g.council] || {}).partyMul || 1)), pop: -3 }), r: T('議會這季特別好說話。脆上：「又是酬庸。」') },
       { t: T('🤝 給選戰的自己人'), fx: { trust: 6, pop: -6 }, r: T('老戰友們很感動。記者把每個人的經歷都查出來了。') },
       { t: T('🎓 找專業經理人'), fx: { budget: 5, council: -4, trust: -2 }, r: T('公司營運變好了，但大家說你「不懂人情」。') },
-      { t: T('📢 公開徵才'), fx: { pop: 4, council: -2, staff: -2 }, r: T('徵才跑了三個月，被說「不懂政治」，但履歷很漂亮。') }] },
+      { t: T('📢 公開徵才'), fx: { pop: 4, council: -2, staff: -2 }, r: T('徵才跑了三個月，被說「不懂政治」，但履歷很漂亮。') },
+      { t: T('🪑 留一個董事給自己當退路'), fx: { network: 10, integrity: -12, trust: 2 }, later: { in: 2, fx: { pop: -6 }, text: T('記者列出市府轉投資公司的董事名單，你的名字在上面。') }, r: T('卸任之後，你有地方去了。') }] },
     { id: 'presser', special: 1, title: T('上任百日記者會'), text: T('記者把這一百天做過的事，一件一件拿出來問。從今天起，再說「這是前任留下的」，大家就不買單了。'), opts: [
       { t: T('📋 老實報告抽屜清單'), fx: g => ({ pop: g.drawer.filter(d => d.done).length * 2 - 4 }), r: T('記者寫：「至少很誠實。」') },
       { t: T('🎉 只講做好的'), fx: { pop: 3, council: -3 }, r: T('隔天報紙把沒講的列成一張表。') }] },
@@ -304,6 +343,9 @@ const CAREER_MAYOR_OFFICE = {
   // 特質對政見的影響
   // 出包之後，有機會觸發「找人揹鍋」（甩鍋中央派的老闆更常叫你做）
   triggered: g => {
+    if (g.stats.stress >= 90 && !g.flags.burnNow) { g.flags.burnNow = 1; return 'burnout'; }
+    if (g.stats.stress < 70) g.flags.burnNow = 0;
+    if (g.stats.integrity <= 45 && !g.flags.probed) { g.flags.probed = 1; return 'probe'; }
     if (!g.flags.mess || (g.flags.scapes || 0) >= 2) return null;
     const p = g.trait === 'central' ? 0.9 : 0.45;
     g.flags.mess = 0;
@@ -327,7 +369,7 @@ const CAREER_MAYOR_OFFICE = {
     { t: T('🫣 繼續裝沒看到'), fx: { pop: -12, council: -6 }, r: T('脆上開始倒數你們的任期。') }] }),
 
   onTurnEnd: g => {
-    const fx = { budget: 6 }; // 每個月的稅收
+    const fx = { budget: 6, stress: 5 }; // 每個月的稅收；壓力慢慢累積
     if (g.trait === 'image') fx.pop = 2; // 網路聲量王：民意一直漲
     if (g.trait === 'portrait' && !g.flags.portraitFixed) fx.budget -= 2; // 大頭照文宣派：宣傳預算一直吃
     if (g.turn === 11 && g.trait === 'corrupt' && g.flags.blind && !g.flags.whistle) g.flags.caught = g.rng() < 0.6 ? 1 : 0; // 裝沒看到的，不一定躲得掉
@@ -337,10 +379,13 @@ const CAREER_MAYOR_OFFICE = {
   },
 
   endings: [
+    { id: 'bothcaught', emoji: '🚔', title: T('一起被約談'), text: T('調查單位同一天約談了市長和市長室主任。記者在走廊上問你：「你們是一起的嗎？」你答不出來。做壞事一定會被抓。'), when: g => g.trait === 'corrupt' && g.stats.integrity <= 40 && !g.flags.whistle },
+    { id: 'youarethe', emoji: '🗄️', title: T('你就是那個前任'), text: T('卸任交接那天，新的主任打開你的抽屜。最上面那一疊，是你收過的伴手禮清單和沒登錄的餐敘。做壞事一定會被抓，只是晚一點。'), when: g => g.stats.integrity <= 35 && !g.flags.confessed },
+    { id: 'burnoutend', emoji: '🚑', title: T('主任先倒下了'), text: T('你在病床上回完最後一則訊息，終於承認：這四年，你把自己也當成了抽屜裡的公文。'), when: g => (g.flags.burnouts || 0) >= 2 },
     { id: 'questioned', emoji: '🚔', title: T('你也被約談了'), text: T('連任選舉前三個月，調查單位來到市長室。你幫忙擋下的那些餐敘，每一筆都有紀錄。做壞事一定會被抓，幫忙的也一樣。'), when: g => g.trait === 'corrupt' && (g.flags.complicit || g.flags.caught) },
     { id: 'whistle', emoji: '📮', title: T('吹哨者'), text: T('政風處接手調查，老闆的記者會改成道歉記者會。你被調離市長室，但走廊上有幾個公務員偷偷跟你點頭。'), when: g => g.flags.whistle },
     { id: 'walkaway', emoji: '🚪', title: T('全身而退'), text: T('你在連任選舉之前就離開了。新聞只寫了一行：「市長室主任請辭，原因不明。」你知道原因。'), when: g => g.flags.quit },
-    { id: 'clean', emoji: '🧹', title: T('清空抽屜的人'), text: T('前任的爛攤子全部挖出來處理完，政見也做到了，一次都沒有甩鍋。秘書長說：「我在這裡 30 年，第一次看到抽屜是空的。」'), when: (g, t) => t.drawer === t.total && g.blamed === 0 && t.pledges >= 2 },
+    { id: 'clean', emoji: '🧹', title: T('清空抽屜的人'), text: T('前任的爛攤子全部挖出來處理完，政見也做到了，一次都沒有甩鍋。秘書長說：「我在這裡 30 年，第一次看到抽屜是空的。」'), when: (g, t) => t.drawer === t.total && g.blamed === 0 && t.pledges >= 2 && g.stats.integrity >= 70 },
     { id: 'chaos', emoji: '🔥', title: T('府會大亂'), text: T('數值一路暴衝，議會、市府、脆上同時著火。連任前夕的記者會變成道歉記者會。'), when: g => g.overflow >= 4 || Object.values(g.stats).some(v => v <= 0) },
     { id: 'imageking', emoji: '📱', title: T('聲量第一，公文第一多'), text: T('老闆的短影音紅遍全國，民調全國第一。連任辯論上，對手只問了一題：「這四年，市府做了什麼？」全場安靜。'), when: (g, t) => g.trait === 'image' && !g.flags.proxy && !g.flags.imageFixed && t.pledges <= 1 },
     { id: 'reelect', emoji: '🌤️', title: T('連任有望'), text: T('抽屜清了大半，政見也看得到成果。老闆在連任前夕的晚上說：「明天，我們再拚一次。」\n\n……八年後，他坐上了更大的位子。'), when: (g, t) => t.drawer >= t.total - 3 && t.pledges >= 2 },
@@ -359,6 +404,9 @@ const CAREER_MAYOR_OFFICE = {
   titles: [
     { id: 'whistle', emoji: '📮', name: T('最後的良心'), when: g => g.flags.whistle },
     { id: 'blamer', emoji: '🫵', name: T('甩鍋大師'), when: g => g.blamed >= 4 },
+    { id: 'saint', emoji: '🧼', name: T('一塵不染'), when: g => g.stats.integrity >= 90 },
+    { id: 'networker', emoji: '📇', name: T('人脈王'), when: g => g.stats.network >= 75 },
+    { id: 'backdoor', emoji: '🚪', name: T('後門專家'), when: g => g.log.filter(l => l.act === 'shortcut' || l.gray).length >= 3 },
     { id: 'digger', emoji: '⛏️', name: T('考古學家'), when: (g, t) => t.drawer === t.total },
     { id: 'ribbon', emoji: '✂️', name: T('剪綵達人'), when: (g, t) => t.pledges === 3 },
     { id: 'shelver', emoji: '📥', name: T('公文旅行社社長'), when: g => g.drawer.some(d => d.shelved >= 6) },

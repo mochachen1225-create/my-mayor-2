@@ -18,7 +18,8 @@ function play(seed, strat) {
       }
       if (!open.length) continue;
       let d = open[Math.floor(r() * open.length)], act;
-      if (strat === 'random') act = ['do', 'look', 'shelve', 'blame'][Math.floor(r() * 4)];
+      if (strat === 'random') act = ['do', 'look', 'shortcut', 'blame'][Math.floor(r() * 4)];
+      else if (strat === 'gray') act = 'shortcut';
       else { d = open.slice().sort((x, y) => (x.known - y.known) || (y.real - x.real))[0]; act = !d.known && r() < 0.5 ? 'look' : (g.stats.budget > E.drawerCost(C, g, d) + 8 ? 'do' : (E.ruleShift(C, g) ? 'shelve' : 'blame')); }
       if (act === 'do' && d.blocked) act = 'look';
       E.useDrawer(C, g, d.id, act);
@@ -28,7 +29,7 @@ function play(seed, strat) {
   return g;
 }
 const N = 2000;
-for (const s of ['random', 'pledger', 'drawer', 'balanced']) {
+for (const s of ['random', 'pledger', 'drawer', 'balanced', 'gray']) {
   const c = {}, tr = {}, titles = {}, avg = { drawer: 0, pledges: 0, overflow: 0 }, st = {}, low = {}, high = {};
   for (let i = 1; i <= N; i++) {
     const g = play(i, s), e = E.ending(C, g).id, t = E.tally(g);

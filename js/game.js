@@ -13,6 +13,31 @@ function lastWin() {
   try { const R = JSON.parse(localStorage.getItem('mymayor.records') || 'null'); return R && R.runs && R.runs.slice().reverse().find(r => r.win); } catch (e) { return null; }
 }
 
+// ---------- GoatCounter 匿名計數（只記次數，不記個人資料）----------
+function track(path) { try { if (window.goatcounter && window.goatcounter.count) window.goatcounter.count({ path, title: path, event: true }); } catch (e) { /* 沒差 */ } }
+
+// ---------- 分享截圖 ----------
+function shareImage(e, ti, tr, t) {
+  const W = 1080, H = 1350, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d'), font = n => `700 ${n}px -apple-system, "PingFang TC", "Noto Sans TC", sans-serif`;
+  x.fillStyle = '#2b2f36'; x.fillRect(0, 0, W, H);
+  x.fillStyle = '#f6efe0'; x.fillRect(40, 40, W - 80, H - 80);
+  x.textAlign = 'center'; x.fillStyle = '#c0392b'; x.font = font(40); x.fillText(T('我推的市長：上任篇'), W / 2, 130);
+  x.font = font(150); x.fillText(e.emoji, W / 2, 330);
+  x.fillStyle = '#2b2f36'; x.font = font(72); x.fillText(e.title, W / 2, 450);
+  const wrap = (s, y, size, maxW) => { x.font = font(size); let line = '', yy = y; for (const ch of s) { if (x.measureText(line + ch).width > maxW) { x.fillText(line, W / 2, yy); line = ''; yy += size * 1.5; } line += ch; } x.fillText(line, W / 2, yy); return yy; };
+  x.fillStyle = '#4b4740'; let y = wrap(e.text.replace(/\n/g, ''), 540, 36, W - 220);
+  y += 90; x.fillStyle = '#2b2f36'; x.font = font(42);
+  [`🏅 ${ti.name}`, `${tr.emoji} ${T('老闆的真面目：{0}', tr.name)}`, `🗄️ ${T('爛攤子 {0}／{1}', t.drawer, t.total)}　📣 ${T('政見 {0}／{1}', t.pledges, G.pledges.length)}`].forEach((l, i) => x.fillText(l, W / 2, y + i * 70));
+  x.fillStyle = '#e0a526'; x.font = font(34); x.fillText(T('你以為選上就萬歲了？不，是大坑的開始。'), W / 2, H - 110);
+  c.toBlob(async blob => {
+    const file = new File([blob], 'my-mayor-2.png', { type: 'image/png' });
+    const text = T('我在《我推的市長：上任篇》當市長室主任，結局是「{0}」，稱號「{1}」。老闆的真面目是……「{2}」！👉 https://mochachen1225-create.github.io/my-mayor-2/', e.title, ti.name, tr.name);
+    try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], text }); return; } } catch (err) { /* 取消分享就算了 */ }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'my-mayor-2.png'; a.click();
+  }, 'image/png');
+}
+
 // ---------- 圖鑑 ----------
 function loadGallery() { try { return JSON.parse(localStorage.getItem(GALLERY_KEY) || '{}'); } catch (e) { return {}; } }
 function saveGallery(kind, id) { const g = loadGallery(); g[kind] = g[kind] || {}; g[kind][id] = (g[kind][id] || 0) + 1; try { localStorage.setItem(GALLERY_KEY, JSON.stringify(g)); } catch (e) { /* 無痕模式就算了 */ } }
@@ -30,7 +55,7 @@ function guide(step) {
   return `<div class="hud">
     <div class="guide"><b>${r.label || ''}</b>${r.note ? `<span class="tag">${r.note}</span>` : ''}<span class="right">${T('第 {0}／{1} 回合', G.turn, G.turns)}</span></div>
     <div class="step">👉 ${step}</div>
-    <div class="stats">${C.stats.map(s => { const v = G.stats[s.id], warn = v <= s.low + 8 || v >= s.high - 8; return `<div class="stat ${warn ? 'warn' : ''}">${s.emoji} ${v}<div class="bar"><div style="width:${v}%"></div></div><div>${s.name}</div></div>`; }).join('')}</div>
+    ${['city', 'me'].map(grp => `<div class="statrow ${grp}"><span class="glabel">${grp === 'city' ? T('市府') : T('你')}</span><div class="stats">${C.stats.filter(s => s.group === grp).map(s => { const v = G.stats[s.id], warn = v <= s.low + 8 || v >= s.high - 8; return `<div class="stat ${warn ? 'warn' : ''}">${s.emoji} ${v}<div class="bar"><div style="width:${v}%"></div></div><div>${s.name}</div></div>`; }).join('')}</div></div>`).join('')}
     ${ruleShift(C, G) ? `<div class="shift">${T('📰 百日已過：再說「這是前任留下的」會被罵')}</div>` : ''}
   </div>`;
 }
@@ -152,6 +177,7 @@ function cabinetScreen() {
 
 // ---------- 回合開始：事件（第 3 回合是蓋章小遊戲）----------
 function turnStart() {
+  if (G.turn === G.turns && !G.flags.pressDone) { G.flags.pressDone = 1; return pressGame(turnStart); }
   if (G.turn === 3 && !G.flags.stampDone) { G.flags.stampDone = 1; return stampGame(() => { actionsLeft = C.actionsPerTurn; workScreen(); }); }
   const ev = drawEvent(C, G);
   const tag = ev.boom ? `<span class="tag red">${T('💥 擱置太久')}</span>` : ev.final ? `<span class="tag blue">${T('🗳️ 終局')}</span>` : (ev.id.startsWith('tr_') && !ev.id.endsWith('_hint')) ? `<span class="tag red">${T('😳 老闆的真面目')}</span>` : ev.id.endsWith('_hint') ? `<span class="tag">${T('🤔 有點怪')}</span>` : '';
@@ -180,11 +206,13 @@ function workScreen() {
     <div class="grid">
       ${open.map(d => { const def = C.drawer.find(x => x.id === d.id); return `<button class="topic ${d.fresh ? 'new' : ''} ${d.own ? 'own' : ''}" data-d="${d.id}"><span class="ic">${d.own ? '🧾' : '🗄️'}</span><b>${def.title}</b><small>${SIZE(d.size)}${d.known ? '' : '？'}${d.shelved >= 2 ? ' ⚠️' : ''}</small></button>`; }).join('')}
       ${pls.map(p => { const def = C.pledges.find(x => x.id === p.id); return `<button class="topic pl" data-p="${p.id}"><span class="ic">${def.emoji}</span><b>${def.name}</b><small>${T('政見 {0}／{1}', p.step, C.pledgeSteps.length)}</small></button>`; }).join('')}
+      <button class="topic rest" id="rest"><span class="ic">🛌</span><b>${T('請假一天')}</b><small>${T('壓力 −20、老闆信任 −2')}</small></button>
     </div>
     <p class="muted center">${T('🗄️ 前任的爛攤子　🧾 你們自己的　📣 政見')}</p>
     <button class="btn ghost" id="skip">${T('這次先開會（跳過）')}</button>`);
   app.querySelectorAll('[data-d]').forEach(b => b.onclick = () => drawerSheet(b.dataset.d));
   app.querySelectorAll('[data-p]').forEach(b => b.onclick = () => pledgeSheet(b.dataset.p));
+  $('#rest').onclick = () => { const fx = { stress: -20, trust: -2 }; applyFx(C, G, fx); afterAction(T('你關掉手機睡了一整天。醒來有 46 則未讀，但你覺得自己又是個人了。') + fxHtml(fx), fx, 'up'); };
   $('#skip').onclick = () => afterAction(T('開了一整個上午的會，結論是「再開一次會」。'), {}, 'down');
 }
 function sheet(head, body, opts) {
@@ -206,11 +234,13 @@ function drawerSheet(id) {
     let m = `<b>${def.title}</b><br>`;
     if (a === 'do') m += T('處理好了。') + (r.note === 'oops' ? T('（自己人第一次出手，流程走錯，被記者抓到。）') : '');
     if (a === 'look') m += T('調查完了，真正的大小是 {0}。', SIZE(d.real));
+    if (a === 'shortcut') m += T('打了幾通電話，事情一個下午就搞定了。沒有人問是怎麼辦到的。');
     if (a === 'blame') m += late ? T('「都上任多久了還怪前任？」') : T('「這是前任留下來的。」大家點頭。');
     afterAction(m + fxHtml(r.fx), r.fx, a === 'blame' ? 'blame' : moodOf(r.fx), r.opened);
   };
   sheet(head, def.text, [
     { t: T('🛠️ 處理掉'), d: d.blocked ? T('另一件事剛用掉這筆錢，下回合再說') : T('預算 −{0}{1}', drawerCost(C, G, d), d.costMul > 1 ? T('（預算被搶走一部分，變貴了）') : ''), off: !!d.blocked, go: act('do') },
+    { t: T('🚪 走後門，找人喬'), d: T('預算 −{0}，立刻搞定；清白會掉，代價晚點來', Math.round(drawerCost(C, G, d) / 2)), go: act('shortcut') },
     { t: T('🔍 先調查'), d: d.known ? T('已經知道真正多大了') : T('不花錢，看清楚真正有多大'), go: act('look') },
     { t: T('🫵 甩鍋給前任'), d: d.own ? T('這是你們自己的，沒辦法甩') : late ? T('百日過了，現在甩會被罵') : T('民意 +，但事情還在'), off: !!d.own, go: act('blame') }
   ]);
@@ -230,6 +260,9 @@ function pledgeSheet(pid) {
       else if (r.why === 'fail') m += r.step.id === 'tender' ? T('流標了，沒有廠商來投標。') : T('議會把預算刪了，要你「再研議」。');
       else m += T('被退回：要先處理「{0}」。', C.drawer.find(x => x.id === r.why.split(':')[1]).title);
       afterAction(m + fxHtml(r.fx), r.fx, r.ok ? 'pledge' : 'down');
+    } }, { t: C.pledgeGray[chk.step.id].name, d: chk.block ? T('主計卡著，喬也沒用') : T('這一步一定過；清白會掉，代價晚點來'), off: !!chk.block, go: () => {
+      const r = pushPledgeGray(C, G, pid);
+      afterAction(`<b>${def.emoji} ${def.name}：${r.step.name}</b><br>${T('事情突然變得很順利。')}` + fxHtml(r.fx), r.fx, 'up');
     } }]);
 }
 
@@ -251,6 +284,7 @@ function nightScreen() {
   show(`${guide(T('回合結束，按下面'))}
     <div class="card"><b>🌙 ${T('這段時間過去了')}</b>
       <p class="muted">${T('沒碰的公文又放厚了一點。稅收入帳：預算 +6。')}</p>
+      ${G.news.length ? `<div class="news">📰 <b>${T('晚一點才來的代價')}</b>${G.news.map(n => `<div>${n.text}${fxHtml(n.fx)}</div>`).join('')}</div>` : ''}
       ${fresh.length ? `<p>🧾 ${T('新的麻煩，這次是你們自己的：')}${fresh.map(d => `<b>「${C.drawer.find(x => x.id === d.id).title}」</b>`).join('')}</p>` : ''}
     </div>
     <button class="btn" id="go">${over ? T('看結局 →') : T('下一回合：{0} →', (C.rounds[G.turn - 1] || {}).label || '')}</button>`);
@@ -315,6 +349,32 @@ function attachGame(done) {
   const tm = setInterval(() => { const left = 8 - (Date.now() - t0) / 1000; const c = $('#clock'); if (c) c.textContent = `⏱ ${Math.max(0, left).toFixed(1)}s`; if (left <= 0) finish(false); }, 100);
 }
 
+// ---------- 小遊戲：擋記者（連任前夕的記者會）----------
+function pressGame(done) {
+  show(`${guide(T('小遊戲：推開麥克風，只回答 🙋 的好問題'))}
+    <div class="card ev"><h2>${T('🎤 連任前夕記者會')}</h2><p>${T('麥克風一支一支伸過來。點 🎤 把它推開；看到 🙋 好問題就點它回答。不要回答到 🔥 陷阱題！8 秒。')}</p>
+    <button class="btn" id="go">${T('開始！')}</button></div>`);
+  $('#go').onclick = () => {
+    const t0 = Date.now(); let pushed = 0, good = 0, bad = 0;
+    show(`<div class="hud"><div class="step" id="clock">⏱ 8.0s</div></div><div class="mics">${Array.from({ length: 9 }, (_, i) => `<button data-i="${i}"></button>`).join('')}</div>`);
+    const cells = [...app.querySelectorAll('.mics button')];
+    cells.forEach(b => b.onclick = () => { const k = b.dataset.k; if (!k) return; if (k === 'mic') pushed++; if (k === 'good') good++; if (k === 'trap') bad++; b.dataset.k = ''; b.textContent = k === 'trap' ? '💥' : '✨'; });
+    const tick = setInterval(() => {
+      const left = 8 - (Date.now() - t0) / 1000;
+      const c = $('#clock'); if (c) c.textContent = `⏱ ${Math.max(0, left).toFixed(1)}s　🎤 ${pushed}　🙋 ${good}`;
+      cells.forEach(b => { if (Math.random() < 0.08) { const r = Math.random(); b.dataset.k = r < 0.6 ? 'mic' : r < 0.82 ? 'good' : 'trap'; b.textContent = { mic: '🎤', good: '🙋', trap: '🔥' }[b.dataset.k]; } else if (Math.random() < 0.05) { b.dataset.k = ''; b.textContent = ''; } });
+      if (left <= 0) {
+        clearInterval(tick);
+        const score = pushed + good * 3 - bad * 4;
+        const fx = score >= 14 ? { pop: 6, stress: -5 } : score >= 6 ? { pop: 2 } : { pop: -5, stress: 6 };
+        applyFx(C, G, fx);
+        show(`${guide(T('看完按下面'))}<div class="card ev"><h2>${T('🎤 記者會結束')}</h2><div class="res">${score >= 14 ? T('你擋得滴水不漏，老闆的回答也剛剛好。') : score >= 6 ? T('有驚無險。') : T('陷阱題被老闆接住了，接得很爛。')}${fxHtml(fx)}</div></div><button class="btn" id="go">${T('連任前夕 →')}</button>`);
+        $('#go').onclick = done;
+      }
+    }, 100);
+  };
+}
+
 // ---------- 小遊戲：剪綵（抓時機）----------
 function ribbonGame(done) {
   show(`${guide(T('小遊戲：指針到綠色區域時按「剪！」'))}
@@ -336,6 +396,7 @@ function endingScreen() {
     LAST_END = { g: G, e, ti, save: seriesSave(C, G, e) };
     try { const S = JSON.parse(localStorage.getItem(SERIES_KEY) || '{}'); S.p2 = LAST_END.save; localStorage.setItem(SERIES_KEY, JSON.stringify(S)); } catch (err) { /* 無痕模式就算了 */ }
     saveGallery('endings', e.id); saveGallery('titles', ti.id); saveGallery('traits', G.trait);
+    track('end-' + e.id);
   }
   const { e, ti, save } = LAST_END, t = tally(G), tr = C.traits[G.trait];
   show(`<div class="ending">
@@ -349,13 +410,15 @@ function endingScreen() {
         <div>📣 ${T('政見兌現：{0}／{1} 張', t.pledges, G.pledges.length)}</div>
         <div>🫵 ${T('甩鍋給前任：{0} 次', G.blamed)}</div>
       </div>
+      <button class="btn" id="share">${T('📤 分享結局截圖')}</button>
       <button class="btn ghost" id="code">${T('🔗 複製系列存檔碼（之後的篇章可以接續）')}</button>
       <button class="btn" id="again">${T('🔁 再當一次市長室主任')}</button>
       <button class="btn ghost" id="gal">${T('📚 圖鑑')}</button>
     </div>`);
   $('#code').onclick = () => { const c = encodeSave(save); (navigator.clipboard ? navigator.clipboard.writeText(c) : Promise.reject()).then(() => { $('#code').textContent = T('✅ 已複製'); }).catch(() => prompt(T('複製這串存檔碼：'), c)); };
-  $('#again').onclick = setupScreen;
+  $('#again').onclick = () => { track('replay'); setupScreen(); };
   $('#gal').onclick = () => galleryScreen(endingScreen);
+  $('#share').onclick = () => shareImage(e, ti, tr, t);
 }
 
 // ---------- 圖鑑 ----------

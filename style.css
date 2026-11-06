@@ -142,3 +142,13 @@ h2 { font-size: 21px; margin: 6px 0 10px; }
 .files button { padding: 10px 2px; font-size: 22px; border: 2px solid var(--line); background: #fff; border-radius: 10px; cursor: pointer; }
 .files button small { display: block; font-size: 10px; color: var(--muted); }
 .files button.ok { border-color: var(--good); background: #e5f5ea; }
+.statrow { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.statrow .glabel { font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 6px; writing-mode: horizontal-tb; white-space: nowrap; }
+.statrow.city .glabel { background: #e3e9f7; color: #33508f; }
+.statrow.me .glabel { background: #fbe0dc; color: #a33224; }
+.statrow .stats { flex: 1; grid-template-columns: repeat(4, 1fr); margin-top: 0; }
+.statrow.me .stat .bar div { background: #c0392b; }
+.topic.rest { background: #eef7ee; border-color: #c6e3c6; }
+.news { background: #fff1ec; border-radius: 10px; padding: 8px 10px; margin: 8px 0; font-size: 14px; }
+.mics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+.mics button { height: 90px; font-size: 40px; border-radius: 14px; border: 2px solid var(--line); background: #fff; cursor: pointer; }

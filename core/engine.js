@@ -14,7 +14,7 @@ function newRun(career, opts = {}) {
   const rng = makeRng(opts.seed || Date.now());
   const g = {
     career: career.id, turn: 1, turns: career.turns, rng,
-    stats: {}, flags: {}, log: [], overflow: 0, blamed: 0, cabinet: {},
+    stats: {}, flags: {}, log: [], overflow: 0, blamed: 0, cabinet: {}, later: [], news: [],
     drawer: [], staffers: {}, trait: null,
     deck: career.events.filter(e => !e.final && !e.special).map(e => e.id), used: [], pledges: []
   };
@@ -80,8 +80,8 @@ function applyFx(career, g, fx = {}) {
   for (const [k, v] of Object.entries(fx)) if (k in g.stats) g.stats[k] = clamp(g.stats[k] + v, 0, 100);
   for (const s of career.stats) {
     const v = g.stats[s.id];
-    if (v <= s.low && !g.flags['low_' + s.id]) { g.flags['low_' + s.id] = 1; g.overflow++; hits.push({ stat: s.id, kind: 'low' }); }
-    if (v >= s.high && !g.flags['high_' + s.id]) { g.flags['high_' + s.id] = 1; g.overflow++; hits.push({ stat: s.id, kind: 'high' }); }
+    if (v <= s.low && !g.flags['low_' + s.id]) { g.flags['low_' + s.id] = 1; if (s.group !== 'me') g.overflow++; hits.push({ stat: s.id, kind: 'low' }); }
+    if (v >= s.high && !g.flags['high_' + s.id]) { g.flags['high_' + s.id] = 1; if (s.group !== 'me') g.overflow++; hits.push({ stat: s.id, kind: 'high' }); }
     if (v > s.low && v < s.high) { delete g.flags['low_' + s.id]; delete g.flags['high_' + s.id]; }
   }
   return hits;
@@ -107,9 +107,12 @@ function drawEvent(career, g) {
   g.used.push(id);
   return career.events.find(e => e.id === id);
 }
+// 延後出現的代價（灰色選項短期有用，代價晚一點才來）
+function schedule(g, later) { if (later) g.later.push({ at: g.turn + (later.in || 2), fx: later.fx || {}, text: later.text || '' }); }
 function chooseEvent(career, g, ev, i) {
   const op = ev.opts[i];
   const fx = typeof op.fx === 'function' ? op.fx(g, ruleShift(career, g)) : op.fx;
+  schedule(g, typeof op.later === 'function' ? op.later(g) : op.later);
   const hits = applyFx(career, g, fx);
   g.log.push({ turn: g.turn, kind: 'event', id: ev.id, opt: i, fx });
   return { fx, hits, text: typeof op.r === 'function' ? op.r(g) : op.r };
@@ -132,6 +135,11 @@ function useDrawer(career, g, id, act) {
     if (slot && g.cabinet[slot] === 'loyal' && !g.flags['oops_' + slot]) { g.flags['oops_' + slot] = 1; fx.pop = (fx.pop || 0) - 4; note = 'oops'; }
     d.done = true; d.known = true; opened = openChain(career, g, d);
     for (const cid of def.conflict || []) { const c = g.drawer.find(x => x.id === cid); if (c && !c.done) { if (def.conflictKind === 'block') c.blocked = 2; else c.costMul = 1.5; } }
+  } else if (act === 'shortcut') {
+    // 走後門：成本減半、立刻解決；代價晚一點才來
+    fx = Object.assign({ budget: -Math.round(drawerCost(career, g, d) / 2) }, def.fx, career.shortcut.fx);
+    schedule(g, career.shortcut.later);
+    d.done = true; d.known = true; opened = openChain(career, g, d);
   } else if (act === 'look') {
     d.known = true; d.size = d.real; opened = openChain(career, g, d);
   } else if (act === 'blame') {
@@ -167,6 +175,16 @@ function pushPledge(career, g, pid, forced) {
   return { ok, why, step, fx, hits };
 }
 
+// 政見走後門：這一步一定過，但清白掉、代價晚點來
+function pushPledgeGray(career, g, pid) {
+  const p = g.pledges.find(x => x.id === pid);
+  const step = career.pledgeSteps[p.step], gray = career.pledgeGray[step.id];
+  const r = pushPledge(career, g, pid, true);
+  applyFx(career, g, gray.fx); schedule(g, gray.later);
+  g.log.push({ turn: g.turn, kind: 'pledge', id: pid, step: step.id, gray: true });
+  return Object.assign(r, { fx: Object.assign({}, r.fx, gray.fx) });
+}
+
 // ---------- 回合結束 ----------
 function endTurn(career, g) {
   // 任期後段，你們自己長出來的爛攤子
@@ -179,6 +197,10 @@ function endTurn(career, g) {
   }
   if (career.onTurnEnd) applyFx(career, g, career.onTurnEnd(g) || {});
   g.turn++;
+  // 到期的延後代價
+  g.news = [];
+  for (const l of g.later.filter(x => x.at === g.turn)) { applyFx(career, g, l.fx); g.news.push(l); }
+  g.later = g.later.filter(x => x.at > g.turn);
   return g.turn > g.turns || !!g.flags.quit;
 }
 
@@ -192,4 +214,4 @@ function seriesSave(career, g, end) {
 const encodeSave = o => btoa(unescape(encodeURIComponent(JSON.stringify(o))));
 const decodeSave = s => { try { return JSON.parse(decodeURIComponent(escape(atob(s.trim())))); } catch (e) { return null; } };
 
-if (typeof module !== 'undefined') module.exports = { makeRng, newRun, cabinetOffer, appoint, runTitle, applyFx, drawEvent, chooseEvent, drawerCost, useDrawer, pledgeCheck, pushPledge, endTurn, tally, ending, ruleShift, seriesSave, encodeSave, decodeSave };
+if (typeof module !== 'undefined') module.exports = { pushPledgeGray, schedule, makeRng, newRun, cabinetOffer, appoint, runTitle, applyFx, drawEvent, chooseEvent, drawerCost, useDrawer, pledgeCheck, pushPledge, endTurn, tally, ending, ruleShift, seriesSave, encodeSave, decodeSave };
