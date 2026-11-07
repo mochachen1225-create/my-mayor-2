@@ -119,14 +119,14 @@ const SAVE = 'promise.v2';
 let SV = (() => { try { return JSON.parse(localStorage.getItem(SAVE)) || {}; } catch (e) { return {}; } })();
 const save = () => { try { localStorage.setItem(SAVE, JSON.stringify(SV)); } catch (e) {} };
 
-// ---------- 主線清單（議題排名查證後再定；這一版只開放捷運）----------
+// ---------- 主線清單：照「市民最希望優先處理的議題」排（都更、交通、環境衛生、教育、長照醫療、居住；來源見 NOTES，只當參考）。這一版只開放捷運 ----------
 const LINES = {
+  renew: { e: '🏚️', n: '都更和居住', promise: '危老公寓加速重建，再蓋一萬戶社宅' },
   metro: { e: '🚇', n: '捷運延伸線', promise: '四年內，捷運延伸線動工', open: true },
-  housing: { e: '🏘️', n: '社會住宅', promise: '四年內，再蓋一萬戶社宅' },
-  renew: { e: '🏚️', n: '老屋都更', promise: '危老公寓加速重建' },
   walk: { e: '🚸', n: '行人安全', promise: '終結行人地獄' },
-  kids: { e: '👶', n: '托育', promise: '每區都有公共托嬰' },
-  elder: { e: '🧓', n: '長照', promise: '長照據點走路 10 分鐘到' }
+  elder: { e: '🧓', n: '長照和醫療', promise: '長照據點走路 10 分鐘到' },
+  school: { e: '🏫', n: '教育', promise: '老舊校舍全部補強' },
+  clean: { e: '🧹', n: '環境衛生', promise: '垃圾車不再追不到' }
 };
 // ---------- 捷運主線：照真實流程分關（來源見 NOTES 和結局頁）----------
 // 真實流程：整體路網評估 → 可行性研究（交通部審、行政院核定）→ 綜合規劃（含財務計畫、地方分擔，行政院核定）→ 環評、都市計畫變更 → 用地取得、設計 → 預算、發包 → 動工 → 通車
