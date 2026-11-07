@@ -92,14 +92,30 @@ h2 { margin: 6px 0; font-size: 20px; }
 .gal div { background: #fff; border: 2px solid var(--line); border-radius: 12px; padding: 8px 4px; font-size: 12px; text-align: center; }
 .gal div.no { opacity: .35; }
 .gal b { display: block; font-size: 26px; }
+/* 四年後的地圖 */
+.endmap { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: var(--road); border-radius: 16px; padding: 6px; margin: 10px 0; }
+.endmap > div { border-radius: 12px; padding: 6px; text-align: left; font-size: 12px; }
+.endmap b { font-size: 13px; }
+.endmap .em { font-size: 22px; letter-spacing: 1px; margin: 2px 0; }
+.endmap .em span { position: relative; display: inline-block; }
+.endmap .em span.broken { filter: grayscale(1) opacity(.55); }
+.endmap .em span.rot { filter: grayscale(1) brightness(.55); }
+.endmap .em span.work::after { content: '🏗️'; position: absolute; right: -4px; bottom: -2px; font-size: 11px; }
+.fin { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 8px 0; }
+.fin div { background: #fff; border: 2px solid var(--line); border-radius: 12px; padding: 6px 2px; font-size: 11px; text-align: center; }
+.fin b { display: block; font-size: 18px; }
+.post { text-align: left; border-top: 1px solid #eee; padding: 6px 0; font-size: 14px; }
+.post b { font-size: 12px; color: #6b5a33; display: block; }
+.ttl { font-size: 22px; font-weight: 800; margin: 6px 0; }
+.list div { font-size: 14px; padding: 4px 0; border-bottom: 1px dashed #eee; text-align: left; }
 </style>
 </head>
 <body>
 <div id="app"></div>
 <script>
 // ==========================================================
-// 修城市（試玩版 0.3）— 左右滑做決定的市長遊戲
-// 卡片一直來：一個人、一句話、往左或往右。太高太低都會出事。
+// 修城市（試玩版 0.4）— 左右滑做決定的市長遊戲
+// 一張卡＝一個來找市長的人＋一句話。沒有對錯，只有代價；四年 96 張卡一定打完。
 // 摩卡與貓貓小隊
 // ==========================================================
 const $ = s => document.querySelector(s), app = $('#app');
@@ -108,18 +124,18 @@ const TERM = 96; // 一任四年：每兩張卡過一個月
 const STATS = { p: ['😊', '民意'], c: ['🏛️', '議會'], m: ['💰', '財政'], y: ['🏙️', '城市'], k: ['🤫', '口袋'] };
 const SAVE = 'cityswipe.v1';
 let SV = (() => { try { return JSON.parse(localStorage.getItem(SAVE)) || {}; } catch (e) { return {}; } })();
-SV.unlock = SV.unlock || []; SV.ends = SV.ends || []; SV.titles = SV.titles || []; SV.terms = SV.terms || 0;
+SV.unlock = SV.unlock || []; SV.titles = SV.titles || []; SV.terms = SV.terms || 0;
 const save = () => { try { localStorage.setItem(SAVE, JSON.stringify(SV)); } catch (e) {} };
 
-// ---------- 人物（選戰篇的畫風；不出現你的家人）----------
+// ---------- 會來找市長的人（民眾的聲音透過里長、1999 統計、民調、網路聲量、陳情現場）----------
 const CH = {
-  sec: ['秘書小芸', 'npc_intern'], yuki: ['阿雪姨・舊城區里長', 'npc_elder'], fang: ['方議員', 'C_m'], he: ['何議員', 'E_f'], gao: ['高議員', 'D_m'],
+  sec: ['幕僚小芸', 'npc_intern'], secgen: ['秘書長', 'npc_pundit'], yuki: ['阿雪姨・舊城區里長', 'npc_elder'],
+  fang: ['方議員', 'C_m'], he: ['何議員', 'E_f'], gao: ['高議員', 'D_m'], speaker: ['議長', 'B_m'],
   zhou: ['周副市長', 'npc_councilor'], lin: ['林副市長', 'npc_director'], work: ['工務局長', 'npc_staff'], traffic: ['交通局長', 'npc_foreign'],
-  reporter: ['記者小葉', 'npc_reporter'], boss: ['廠商王董', 'npc_shady'], party: ['黨部主委', 'npc_donor'], fin: ['主計處長', 'B_f'],
-  ethic: ['政風處長', 'npc_chief'], vol: ['志工阿傑', 'npc_volunteer'], pundit: ['政論名嘴', 'npc_pundit'],
-  c1: ['早餐店阿姨', 'F_f'], c2: ['外送員小陳', 'F_m'], c3: ['市場攤商', 'B_m'], c4: ['三寶媽', 'C_f'], c5: ['退休老師', 'E_m'], c6: ['店家老闆', 'D_f'],
+  civil: ['民政局長', 'F_f'], info: ['新聞處長', 'npc_volunteer'], fin: ['主計處長', 'B_f'], ethic: ['政風處長', 'npc_chief'], central: ['中央部會次長', 'D_f'],
+  reporter: ['記者小葉', 'npc_reporter'], boss: ['廠商王董', 'npc_shady'], party: ['黨部主委', 'npc_donor'],
   // 解鎖角色
-  kai: ['捷運通勤族阿凱', 'F_m'], weather: ['氣象主播', 'F_f'], grand: ['阿雪姨的孫女（網紅）', 'C_f'], tourist: ['外國背包客', 'E_m'], agent: ['天王經紀人', 'D_f'], ethic2: ['政風處長', 'npc_chief']
+  metroCo: ['捷運公司董事長', 'F_m'], fire: ['消防局長', 'E_m'], grand: ['新里長小雪', 'C_f'], tour: ['觀光局長', 'D_m'], culture: ['文化局長', 'C_f']
 };
 const imgOf = (who, mood) => { const i = CH[who][1]; return i.startsWith('npc') ? `art/${i}.webp` : `art/${i}_${mood || 'flat'}.webp`; };
 
@@ -133,154 +149,186 @@ const SITES = {
   housing: ['hill', '🏚️', '🏘️', '社會住宅'], elder: ['hill', '🧓', '🏡', '長照據點'], lunch: ['hill', '🍱', '🍎', '熱騰騰的營養午餐'],
   stadium: ['port', '🏟️', '🏆', '不積水的體育場'], museum: ['port', '🏛️', '🎨', '青年基地']
 };
+const dn = id => DIST.find(d => d.id === id).n;
 
-// ---------- 卡片 ----------
-// L/R：[選項, 效果]。效果：p c m y k 數值；f 設旗標；fix [地方, 幾張卡後完工]；q [卡片, 幾張卡後回來]；fn 自訂
-// o.once 預設一次；o.rep 可重複（冷卻張數）；o.cond 出現條件；o.set 解鎖組
+// ---------- 卡片：左右都有道理、都有代價 ----------
+// L/R：[選項, 效果]。效果：p c m y k；f 旗標；fix [地方, 幾張卡後完工]；work 開工；q [卡片, 幾張卡後回來]；fn 自訂
+// o.follow：只會被別張卡叫出來；o.rep：可重複（冷卻張數）；o.cond：出現條件；o.set：解鎖組；o.gray：灰色那一邊
 const CARDS = {};
 const C = (id, who, text, L, R, o = {}) => { CARDS[id] = { id, who, text, L, R, ...o }; };
+const F = (id, who, text, L, R, o = {}) => C(id, who, text, L, R, { follow: 1, ...o });
 const has = f => S.f[f];
 
 // 教學
-C('t1', 'sec', '市長早！往右滑＝答應。先把就職典禮的花籃收下吧。', ['（往右滑）', {}], ['收下', { p: 2 }], { tut: 'R' });
-C('t2', 'sec', '往左滑＝拒絕。廠商送來一盒月餅，盒底好像有東西……', ['退回去', { p: 3 }], ['（往左滑）', {}], { tut: 'L' });
-C('t3', 'sec', '拖著卡片先不要放，上面會亮起「會動到」的指標。太高太低都會出事喔！', ['我知道了', { c: 1 }], ['我知道了', { p: 1 }], { tut: 'any' });
+C('t1', 'sec', '市長早！往右滑＝答應。就職第一天，先去大廳跟同仁打招呼？', ['（往右滑）', {}], ['走吧', { p: 2 }], { tut: 'R' });
+C('t2', 'sec', '往左滑＝拒絕。廠商送來一盒月餅，盒底好像有東西……', ['退回去', { c: -1 }], ['（往左滑）', {}], { tut: 'L' });
+C('t3', 'sec', '每個選擇都有代價，沒有標準答案。拖著卡片先不要放，看看上面哪些會動。', ['好', { c: 1 }], ['好', { p: 1 }], { tut: 'any' });
 
-// 阿雪姨的公園（故事線）
-C('a1', 'yuki', '市長，公園髒到狗都不想去，你什麼時候來看？', ['下個月排行程', { p: -4, q: ['a2b', 7] }], ['明天就去', { p: 3, m: -5, fix: ['park', 6], q: ['a2', 9] }]);
-C('a2', 'yuki', '公園整理好了，阿嬤們每天去跳舞，謝謝你啦！', ['是大家的功勞', { p: 4, f: 'yukiHappy' }], ['辦個啟用典禮', { p: 6, m: -3, f: 'yukiHappy' }], { mood: 'smile' });
-C('a2b', 'yuki', '上次說下個月，我帶了三百個連署來了。', ['再等等', { p: -8, q: ['a3b', 7] }], ['好，馬上整理', { p: 2, m: -6, fix: ['park', 5], q: ['a2', 8] }]);
-C('a3b', 'yuki', '我去找記者了，你自己看著辦。', ['隨便她', { p: -10, c: -3 }], ['親自登門道歉', { p: 6, fix: ['park', 6], q: ['a2', 9] }]);
-// 方議員（同一位議員，這次幫你、下次擋你）
-C('b1', 'fang', '河濱步道那個標案，我朋友的公司很優，給他做嘛。', ['照規矩投標', { c: -8, q: ['b2no', 8], fix: ['sky', 10] }], ['我看看', { c: 10, k: 12, f: 'fangDeal', fix: ['sky', 7], q: ['b2yes', 6] }], { gray: 'R' });
-C('b2no', 'fang', '你的追加預算，我們這一席很難支持喔。', ['那就不追加', { y: -4, m: 3 }], ['好啦，下次給你朋友', { c: 12, k: 8 }], { gray: 'R' });
-C('b2yes', 'boss', '市長，步道快做好了，一點心意。', ['退回去', { k: -6, c: -4 }], ['收下', { k: 18 }], { gray: 'R' });
-C('b3', 'reporter', '河濱步道才啟用三個月就龜裂，聽說廠商跟方議員很熟？', ['無可奉告', { p: -10, k: 6 }], ['我會徹查', { p: 5, c: -15 }], { cond: () => has('fangDeal') && S.site.sky === 'fixed' });
-C('b4', 'fang', '上次你沒給我朋友做，但這次的預算……我還是會幫你。', ['謝謝議員', { c: 6 }], ['你想要什麼？', { c: -3, p: 2 }], { cond: () => S.n > 40 && !has('fangDeal') });
-// 捷運（目標）
-C('m1', 'traffic', '捷運延伸線卡在中央核定，要不要你親自去跑？', ['讓局處去跑', { q: ['m2', 10] }], ['我親自去', { p: 3, m: -3, q: ['m2', 5] }]);
-C('m2', 'traffic', '核定了！但施工要封兩個車道，附近店家會哭。', ['晚點再開工', { y: -3, q: ['m2', 9] }], ['開工！', { p: -7, m: -12, f: 'metroWork', q: ['m3', 6], work: 'metro' }]);
-C('m3', 'c6', '施工圍籬擋住店門口，我生意掉一半！', ['忍一下，通車就好', { p: -6, q: ['m4', 8] }], ['發施工補償金', { m: -8, p: 4, q: ['m4', 8] }], { mood: 'sad' });
-C('m4', 'traffic', '捷運快好了！要不要趕在選前辦通車典禮？', ['等安全測試跑完', { q: ['m5good', 5] }], ['選前通車！', { p: 9, q: ['m5bad', 4], fix: ['metro', 0], f: 'metroDone' }]);
-C('m5good', 'traffic', '測試跑完，如期通車，月台擠爆了！', ['搭第一班車', { p: 8, fix: ['metro', 0], f: 'metroDone' }], ['發新聞稿就好', { p: 4, fix: ['metro', 0], f: 'metroDone' }], { mood: 'smile' });
-C('m5bad', 'reporter', '通車第三天停駛兩小時，乘客被關在車廂裡。', ['怪包商', { p: -6, c: -4 }], ['市長公開道歉', { p: -2 }]);
-C('m6', 'c5', '捷運站附近房價漲三成，年輕人搬走了。', ['市場機制', { y: 6, p: -5 }], ['在站旁蓋社宅', { m: -10, y: -3, p: 5 }], { cond: () => has('metroDone') });
-// 周副市長
-C('z1', 'zhou', '市長，剪綵我去就好，你那麼忙。', ['我自己去', { p: 3, c: -2 }], ['麻煩你了', { p: -3, q: ['z2', 12] }]);
-C('z2', 'zhou', '鄰市黨部找我去選市長，我想辭職。', ['留下來幫我', { c: 4, m: -3 }], ['祝你順利', { c: -5, p: 2 }]);
-// 記者小葉
-C('r1', 'reporter', '有人說你上任後都沒去過山邊住宅區？', ['行程很滿', { p: -5 }], ['這週就去', { p: 4, m: -4, fix: ['elder', 7] }]);
-C('r2', 'reporter', '1999 結案率 98%，可是我打過去都說「已列管」。', ['數字不會騙人', { p: -6 }], ['改成看滿意度', { p: 5, c: -3 }]);
-C('r3', 'reporter', '市長，口袋裡的東西，要不要先跟我說？', ['沒什麼好說', { p: -6 }], ['……', { p: -2 }], { cond: () => S.s.k >= 50 });
-// 廠商（灰色誘惑）
-C('v1', 'boss', '路燈十年合約我們可以續約，條件好談。', ['重新招標', { m: -6, fix: ['lamp', 6] }], ['續約', { k: 18, y: -4 }], { gray: 'R' });
-C('v2', 'boss', '我們董事長想請市長吃個飯，就吃個飯。', ['不了', { c: -2 }], ['好啊', { k: 10, c: 4 }], { gray: 'R' });
-C('v3', 'boss', '營養午餐又流標，我們可以「協助」，價格好說。', ['提高預算重招', { m: -7, fix: ['lunch', 5] }], ['交給你們', { k: 14, fix: ['lunch', 3], p: -3 }], { gray: 'R' });
-// 黨部
-C('pa1', 'party', '黨部推薦一位前輩當局長，很有經驗。', ['我自己找', { c: -8 }], ['好', { c: 8, y: -4 }]);
-C('pa2', 'party', '選前要多剪綵，工程趕一下。', ['照進度', { c: -6 }], ['趕！', { p: 6, y: -6 }], { cond: () => S.n > 50 });
-C('pa3', 'party', '方議員連任很危險，他選區的建設多排一點。', ['各區一視同仁', { c: -6 }], ['照辦', { c: 10, m: -6, p: -2 }]);
-// 林副市長（很會推責任）
-C('l1', 'lin', '營養午餐流標了，我覺得是中央的問題。', ['先怪中央', { p: -4, c: 3 }], ['提高預算重招', { m: -6, p: 5, fix: ['lunch', 5] }]);
-C('l2', 'lin', '紀念館的事，我想是前任的問題。', ['那就讓它放著', { y: -3 }], ['改成青年基地', { m: -6, p: 3, fix: ['museum', 6] }]);
-// 工務、交通
-C('w1', 'work', '人行道上的廢電線桿，五個單位互踢皮球。', ['繼續會辦', { p: -3 }], ['工務局先拆再說', { p: 5, c: -3, fix: ['pole', 3] }]);
-C('w2', 'work', '危老公寓要重建，有幾戶堅持不搬。', ['慢慢溝通', { p: 2, fix: ['housing', 16] }], ['強制拆除', { y: 6, p: -10, fix: ['housing', 6] }]);
-C('w3', 'work', '巨型場館的前任合約，解約要賠一大筆。', ['繼續協商', { m: -2, q: ['w3b', 10] }], ['付錢解約', { m: -20, fix: ['dome', 10] }]);
-C('w3b', 'work', '協商有進展，廠商願意復工。', ['條件再壓', { c: -3, fix: ['dome', 12] }], ['成交', { m: -8, fix: ['dome', 8] }]);
-C('w4', 'work', '工程來不及，要不要先掛布條「市府關心中」？', ['老實說還沒好', { p: -3 }], ['掛！', { p: 5, y: -4 }], { gray: 'R', rep: 30 });
-C('x1', 'traffic', '東區路口塞爆，要改成行人優先號誌嗎？', ['維持原樣', { p: -3 }], ['改！', { p: 4, c: -2, fix: ['cross', 4] }]);
-C('x2', 'traffic', '騎樓被機車佔滿，要整頓嗎？店家會反彈。', ['不要惹店家', { y: -3, c: 2 }], ['整頓', { y: 4, p: -3, c: -3, fix: ['scooter', 4] }]);
-C('x3', 'traffic', '河濱要補公共自行車站，會佔掉汽車格。', ['不補', { p: -2 }], ['補', { p: 3, c: -2, fix: ['bike', 6] }]);
-// 議員
-C('h1', 'he', '我等一下質詢要拿道具，配合演一下嘛。', ['不陪你演', { c: -6 }], ['好啦', { c: 6, p: -3 }]);
-C('h2', 'he', '紀念館只剩冷氣在上班，我要開記者會！', ['讓他開', { p: -4 }], ['改成青年基地', { m: -6, p: 3, fix: ['museum', 6] }]);
-C('h3', 'he', '你的工地我拍了一支影片，三百萬觀看喔。', ['不理他', { p: -5 }], ['請他來剪綵', { c: 8, p: -2 }], { cond: () => Object.values(S.site).includes('work') });
-C('g1', 'gao', '體育場一啟用就積水，驗收是誰簽的？', ['前任簽的', { p: 2, c: -4 }], ['全部重查', { m: -6, c: 6, fix: ['stadium', 8] }]);
-C('g2', 'gao', '地上權綁五十年，權利金低得離譜。', ['契約要尊重', { c: -6 }], ['重新談判', { c: 5, m: 4, fix: ['land', 10] }]);
-C('g3', 'gao', '我查了一下，你的口袋好像越來越滿？', ['議員想太多', { c: -10 }], ['我會說明', { p: -4, k: -10 }], { cond: () => S.s.k >= 35 });
-C('mk1', 'c3', '老市場漏水，我們用臉盆接雨。', ['明年再說', { p: -3, y: -2 }], ['改建', { m: -9, p: 2, fix: ['market', 10] }], { mood: 'sad' });
-// 主計、政風
-C('fn1', 'fin', '市庫快見底了，要不要調高停車費？', ['不要', { m: -4 }], ['調', { m: 10, p: -6 }], { cond: () => S.s.m < 35 });
-C('fn2', 'fin', '今年有結餘，要不要發「市民回饋金」？', ['存起來', { p: -3 }], ['發！', { m: -15, p: 10 }], { cond: () => S.s.m > 65 });
-C('e1', 'ethic', '市長，有人把你的資料寄給檢調了。', ['沒在怕', { k: 8 }], ['主動說明', { k: -30, p: -10 }], { cond: () => S.s.k >= 60 });
-C('e2', 'sec', '議員送來一張關說條子，要我們「協助」某工程。', ['交給政風', { c: -8 }], ['協助一下', { c: 8, k: 6 }], { gray: 'R' });
-C('e3', 'zhou', '有個公股董事位子空著，給你的競選總幹事？', ['找專業的', { c: -3 }], ['好啊', { c: 5, k: 8, p: -3 }], { gray: 'R' });
-// 1999 陳情（可以重複）
-C('q1', 'c1', '巷口路燈一直閃，晚上不敢走。', ['已列管', { p: -3 }], ['明天就修', { p: 3, m: -2 }], { rep: 30 });
-C('q2', 'c4', '樓下熱炒店油煙超重，窗戶都不敢開！', ['請環保局勸導', { p: 1 }], ['直接開罰', { p: 3, c: -2 }], { rep: 30 });
-C('q3', 'c2', '公車過站不停，我在雨中等了四十分鐘。', ['請業者改善', { p: -1 }], ['扣業者補助', { p: 4, m: 2, c: -2 }], { rep: 30 });
-C('q4', 'c5', '同一條路，一年挖了四次！', ['管線單位各管各的', { p: -4 }], ['推路平專案', { p: 5, m: -5, y: 3 }], { rep: 40 });
-C('q5', 'vol', '流浪貓變多了，有人餵有人罵。', ['交給里長', { p: -1 }], ['推 TNR 結紮', { p: 4, m: -2 }], { rep: 40 });
-C('q6', 'c1', '大雨過後，巷子積水到小腿。', ['這是百年大雨', { p: -5 }], ['加大排水', { p: 3, m: -6, y: 3 }], { rep: 30 });
-C('q7', 'c6', '店門口被畫紅線，客人不能停。', ['紅線照畫', { p: -2, y: 2 }], ['改成限時停車', { p: 3, y: -1 }], { rep: 30 });
-C('q8', 'c2', '路面坑洞害我摔車，外送的湯全灑了。', ['請工務局查', { p: -2 }], ['國賠，順便全面補', { m: -5, p: 4 }], { rep: 30 });
-C('q9', 'pundit', '名嘴說你的施政「只有剪綵」。', ['不回應', { p: -2 }], ['上節目解釋', { p: 3, c: -2 }], { rep: 30 });
-// 季節（每年一次，自己出現）
-C('cny', 'sec', '春節要發福袋嗎？去年排隊排到馬路上。', ['不發', { p: -2 }], ['發！', { p: 5, m: -5 }], { season: 2 });
-C('typhoon', 'sec', '颱風今晚登陸，明天要不要放颱風假？快決定！', ['照常上班', { fn: () => typhoonRes(false) }], ['放假', { fn: () => typhoonRes(true) }], { season: 8, timer: 10, timeout: { p: -10, fn: () => { flash('你猶豫太久，凌晨四點才宣布，全市罵翻。'); } } });
-C('tyHit', 'reporter', '昨晚風雨超大，上班族在路上被吹倒……', ['我們有發布警報', { p: -8 }], ['市長公開道歉', { p: -4 }], { mood: 'sad' });
-C('tySun', 'c2', '放颱風假結果大太陽，大家都去看電影了。', ['寧可保守', { p: -2 }], ['（苦笑）', { p: -3 }]);
-C('tyOk', 'weather', '判斷正確！網友說你是「颱風判官」。', ['謝謝大家', { p: 4, f: 'typhoonOk' }], ['謝謝大家', { p: 4, f: 'typhoonOk' }], { mood: 'smile' });
-C('budget', 'fin', '議會審總預算，方議員說要刪三成。', ['硬碰硬', { c: -10, fn: () => { if (S.s.c > 40) S.f.budgetOk = 1; } }], ['坐下來喬', { c: 6, m: -5, f: 'budgetOk' }], { season: 10 });
-C('nye', 'sec', '跨年晚會要請誰？大牌的很貴。', ['在地樂團', { p: 2, m: -2, f: 'nyeOk' }], ['請天王', { m: -12, fn: () => { if (Math.random() < .55) { S.s.p += 9; S.f.nyeOk = 1; flash('天王一開口，全場大合唱！'); } else { S.s.p -= 4; flash('散場交通大打結，捷運站排到凌晨兩點。'); } } }], { season: 12 });
-C('elect', 'party', '選舉到了，要不要用市府資源幫自己造勢？', ['公私分明', { c: -5, p: 3 }], ['用！', { p: 8, k: 10 }], { season: 9, year: 4, gray: 'R' });
+// 阿雪姨的公園
+C('a1', 'yuki', '市長，公園髒到狗都不想去，里民天天來問我。', ['排進明年預算', { p: -2, q: ['a2b', 7] , m: 3 }], ['這個月就整理', { m: -6, fix: ['park', 6], q: ['a2', 9] }]);
+F('a2', 'yuki', '公園整理好了，阿嬤們每天去跳舞。可是晚上有人在那喝酒……', ['請警察加強巡邏', { m: -2, c: -1, f: 'yukiHappy' }], ['裝監視器', { m: -4, p: -1, f: 'yukiHappy' }], { mood: 'smile' });
+F('a2b', 'yuki', '上次說明年，我帶了三百份連署來了。', ['預算真的排不進', { p: -3, q: ['a3b', 7] , m: 3 }], ['挪別的錢先做', { m: -5, y: -3, fix: ['park', 5], q: ['a2', 8] }]);
+F('a3b', 'yuki', '我去找記者了，你自己看著辦。', ['讓她講', { p: -4 , m: 4 }], ['親自登門，挪錢先做', { m: -8, c: -2, fix: ['park', 6], q: ['a2', 9] }], { mood: 'sad' });
+// 方議員：這次幫你、下次擋你
+C('b1', 'fang', '河濱步道標案，我朋友的公司很優，給他做嘛。', ['照規矩投標', { c: -8, fix: ['sky', 10], q: ['b2no', 8] , p: 3 }], ['讓他來投，評審看著辦', { c: 10, k: 12, f: 'fangDeal', fix: ['sky', 7], q: ['b2yes', 6] }], { gray: 'R' });
+F('b2no', 'fang', '你的追加預算，我們這一席很難支持喔。', ['那就不追加', { y: -4 , m: 4 }], ['下個案子給你朋友', { c: 10, k: 8 }], { gray: 'R' });
+F('b2yes', 'boss', '市長，步道快好了，一點心意。', ['退回去', { c: -5 }], ['收下', { k: 15 }], { gray: 'R' });
+C('b3', 'reporter', '河濱步道才啟用三個月就龜裂，聽說廠商跟方議員很熟？', ['無可奉告', { p: -4 , c: 3 }], ['我會徹查', { c: -12, k: -4 }], { cond: () => has('fangDeal') && S.site.sky === 'fixed' });
+C('b4', 'fang', '上次你沒給我朋友做……這次預算我還是會投，條件是我選區的活動中心。', ['預算照優先順序', { c: -5 , m: 4 }], ['活動中心排進去', { m: -6, c: 6 }], { cond: () => S.n > 40 && !has('fangDeal') });
+// 捷運
+C('m1', 'traffic', '捷運延伸線卡在中央核定，要你親自去跑嗎？', ['讓局處去跑', { p: -1, q: ['m2', 10] , m: 2 }], ['我親自去', { m: -3, c: -2, q: ['m2', 5] }]);
+F('m2', 'traffic', '核定了！但施工要封兩個車道三年，沿線店家會哭。', ['等配套好再開工', { p: -1, y: -2, q: ['m2', 9] , m: 4 }], ['開工', { p: -6, m: -12, work: 'metro', q: ['m3', 6] }]);
+F('m3', 'civil', '沿線里長說：施工圍籬擋住店門，生意掉一半。', ['忍一下，通車就好', { p: -3, q: ['m4', 8] , m: 4 }], ['發施工補償金', { m: -8, c: -2, q: ['m4', 8] }]);
+F('m4', 'traffic', '捷運快好了！要趕在選前通車嗎？', ['等安全測試跑完', { p: -2, c: -3, q: ['m5good', 5] }], ['選前通車', { p: 8, q: ['m5bad', 4], fix: ['metro', 0], f: 'metroDone' }]);
+F('m5good', 'traffic', '測試跑完，如期通車，月台擠爆了。', ['搭第一班車', { p: 6, m: -2, fix: ['metro', 0], f: 'metroDone' }], ['讓局長去剪綵', { p: 3, c: 2, fix: ['metro', 0], f: 'metroDone' }], { mood: 'smile' });
+F('m5bad', 'reporter', '通車第三天停駛兩小時，乘客被關在車廂裡。', ['怪包商', { p: -3, c: -3 }], ['市長公開道歉', { p: -3, c: -1 }]);
+C('m6', 'civil', '民調：捷運站附近房價漲三成，年輕人搬走了。', ['市場機制', { y: 5, p: -3 }], ['在站旁蓋社宅', { m: -10, y: -3, p: 4 }], { cond: () => has('metroDone') });
+// 副市長
+C('z1', 'zhou', '剪綵我去就好，你那麼忙。', ['我自己去', { p: 3, c: -3 }], ['麻煩你了', { p: -3, c: 2, q: ['z2', 12] }]);
+F('z2', 'zhou', '鄰市黨部找我去選市長，我想辭職。', ['留下來幫我', { c: 2, p: -1 }], ['祝你順利', { c: -5, p: 2 }]);
+C('l1', 'lin', '營養午餐流標了，我覺得是中央的問題。', ['先跟中央要錢', { p: -2, q: ['l1b', 8] , m: 3 }], ['市府自己提高預算', { m: -6, fix: ['lunch', 5] }]);
+F('l1b', 'central', '營養午餐補助？明年度再說。', ['那市府自己出', { m: -6, fix: ['lunch', 4] }], ['繼續爭取', { p: -5, c: 2 }]);
+C('l2', 'lin', '紀念館只剩冷氣在上班，我想是前任的問題。', ['先放著', { y: -3, p: -1 , m: 4 }], ['改成青年基地', { m: -6, c: -2, fix: ['museum', 6] }]);
+// 記者、局處
+C('r1', 'reporter', '有人說你上任後都沒去過山邊住宅區？', ['行程都有公開', { p: -2 , m: 2 }], ['這週就去，順便看長照據點', { m: -5, c: -1, fix: ['elder', 7] }]);
+C('r2', 'civil', '1999 結案率 98%，但里長說常常只回「已列管」。', ['維持結案率指標', { p: -2, c: 2 }], ['改看市民滿意度', { m: -2, c: -3, p: 2 }]);
+C('w1', 'work', '人行道上的廢電線桿，五個單位互踢皮球。', ['照程序會辦', { p: -2 , c: 2 }], ['工務局先拆再說', { c: -4, fix: ['pole', 3] }]);
+C('w2', 'work', '危老公寓要重建，有幾戶堅持不搬。', ['慢慢溝通', { y: -2, fix: ['housing', 16] , p: 2 }], ['強制拆除', { p: -10, fix: ['housing', 6] }]);
+C('w3', 'work', '巨型場館的前任合約，解約要賠一大筆。', ['繼續協商', { y: -3, q: ['w3b', 10] , m: 3 }], ['付錢解約', { m: -18, fix: ['dome', 10] }]);
+F('w3b', 'work', '協商有進展，廠商願意復工，但要追加預算。', ['條件再壓', { y: -2, fix: ['dome', 12] }], ['追加', { m: -8, c: -3, fix: ['dome', 8] }]);
+C('w4', 'work', '工程來不及，要不要先掛布條「市府關心中」？', ['老實說還沒好', { p: -2 }], ['掛', { p: 4, y: -3 }], { gray: 'R', rep: 30 });
+C('x1', 'traffic', '東區路口塞爆，要改成行人優先號誌嗎？', ['維持車流', { p: -2 , c: 2 }], ['改', { c: -3, m: -2, fix: ['cross', 4] }]);
+C('x2', 'traffic', '騎樓被機車佔滿，要整頓嗎？店家一定反彈。', ['不要惹店家', { y: -3, c: 2 }], ['整頓', { p: -3, c: -3, fix: ['scooter', 4] }]);
+C('x3', 'traffic', '河濱要補公共自行車站，會佔掉汽車格。', ['不補', { p: -1, y: -1 , m: 2 }], ['補', { c: -2, m: -3, fix: ['bike', 6] }]);
+C('mk1', 'civil', '老市場漏水，攤商用臉盆接雨，里長來陳情。', ['明年再說', { p: -2, y: -2 , m: 4 }], ['改建，攤商先遷臨時市場', { m: -9, c: -2, fix: ['market', 10] }]);
+// 議員、議長
+C('h1', 'he', '我等一下質詢要拿道具，配合演一下嘛。', ['不陪你演', { c: -6 , p: 2 }], ['好啦', { c: 5, p: -3 }]);
+C('h3', 'he', '你的工地我拍了一支影片，三百萬觀看喔。', ['不理他', { p: -2 }], ['請他來剪綵', { c: 6, p: -2 }], { cond: () => Object.values(S.site).includes('work') });
+C('g1', 'gao', '體育場一啟用就積水，驗收是誰簽的？', ['前任簽的，依法辦理', { c: -4, p: -1 , m: 3 }], ['全部重查、重做', { m: -8, fix: ['stadium', 8] }]);
+C('g2', 'gao', '地上權綁五十年，權利金低得離譜。', ['契約要尊重', { c: -6 , m: 2 }], ['重新談判', { y: -3, m: -2, fix: ['land', 10] }]);
+C('g3', 'gao', '我查了一下，市府最近幾個標案很有意思。', ['議員想太多', { c: -8 }], ['請政風說明', { k: -10, p: -4 }], { cond: () => S.s.k >= 35 });
+C('sp1', 'speaker', '議會大樓太舊了，市府補助一下修繕吧。', ['市庫很緊', { c: -8 , m: 4 }], ['補助', { m: -10, p: -2, c: 6 }]);
+C('sp2', 'speaker', '市長，總質詢那天，可以不要請假嗎？', ['那天要去中央開會', { c: -6 }], ['我會到', { p: -2, m: -1, c: 4 }], { cond: () => S.n > 20 });
+// 主計、政風、黨部
+C('fn1', 'fin', '市庫吃緊，要不要調高停車費？', ['不要', { m: -4 , p: 2 }], ['調', { m: 10, p: -6 }], { cond: () => S.s.m < 40 });
+C('fn2', 'fin', '今年有結餘，要不要發市民回饋金？', ['存起來', { p: -2 , c: 2 }], ['發', { m: -15, p: 7 }], { cond: () => S.s.m > 60 });
+C('e2', 'secgen', '議員送來一張關說條子，要我們「協助」某工程。', ['交給政風', { c: -8 , p: 2 }], ['協助一下', { c: 8, k: 6 }], { gray: 'R' });
+C('e3', 'zhou', '有個公股董事位子空著，給你的競選總幹事？', ['找專業的', { c: -4 , p: 2 }], ['好啊', { c: 5, k: 6, p: -3 }], { gray: 'R' });
+C('pa1', 'party', '黨部推薦一位前輩當局長，很有經驗。', ['我自己找', { c: -8 , y: 2 }], ['好', { c: 8, y: -4 }]);
+C('pa2', 'party', '選前要多剪綵，工程趕一下。', ['照進度', { c: -6 , y: 3 }], ['趕', { p: 6, y: -6 }], { cond: () => S.n > 50 });
+C('pa3', 'party', '方議員連任很危險，他選區多排一點建設。', ['各區一視同仁', { c: -6 , m: 3 }], ['照辦', { c: 8, m: -6, p: -2 }]);
+C('v1', 'boss', '路燈十年合約，我們可以續約，條件好談。', ['重新招標', { m: -6, y: -2, fix: ['lamp', 6] , p: 2 }], ['續約', { k: 15, y: -3, c: 2 }], { gray: 'R' });
+C('v2', 'boss', '我們董事長想請市長吃個飯，就吃個飯。', ['不了', { c: -3 }], ['好啊', { k: 8, c: 4 }], { gray: 'R' });
+C('v3', 'boss', '營養午餐又流標，我們可以「協助」，價格好說。', ['提高預算重招', { m: -7, fix: ['lunch', 5] }], ['交給你們', { k: 12, p: -3, fix: ['lunch', 3] }], { gray: 'R' });
+// 民眾的聲音：1999 統計、民調、網路聲量、陳情現場（可以重複）
+C('q1', 'civil', '這個月 1999 最多人抱怨的是：巷口路燈一直閃。', ['交給維修廠商排程', { p: -2 , m: 2 }], ['全面換 LED', { m: -6, y: 2 }], { rep: 30 });
+C('q2', 'civil', '1999 第二名：樓下熱炒店油煙。', ['勸導就好', { p: -1 , c: 1 }], ['開罰', { c: -3, p: 1 }], { rep: 30 });
+C('q3', 'traffic', '1999 抱怨公車過站不停，這個月第三百件。', ['請業者改善', { p: -1 , c: 1 }], ['扣業者補助', { c: -2, y: -1, p: 2 }], { rep: 30 });
+C('q4', 'yuki', '里長聯名：同一條路，一年挖了四次。', ['管線單位各有權責', { p: -2 , m: 3 }], ['推路平專案', { m: -6, y: 3 }], { rep: 40 });
+C('q5', 'civil', '1999：流浪貓變多了，有人餵有人罵。', ['交給里長協調', { p: -1 , m: 1 }], ['推 TNR 結紮', { m: -3, p: 2 }], { rep: 40 });
+C('q6', 'yuki', '大雨過後，巷子積水到小腿。', ['這是百年大雨', { p: -3 , m: 4 }], ['加大排水', { m: -7, y: 3 }], { rep: 30 });
+C('q7', 'civil', '1999：店家抱怨門口被畫紅線。', ['紅線照畫', { p: -1, y: 1 }], ['改限時停車', { y: -2, p: 1 }], { rep: 30 });
+C('q8', 'info', '網路聲量報告：「路面坑洞」上了熱搜。', ['發新聞稿說明', { p: -2 , m: 3 }], ['全面補洞', { m: -6, p: 2 }], { rep: 30 });
+C('q9', 'info', '網路聲量：名嘴說你的施政「只有剪綵」。', ['不回應', { p: -1 , c: 1 }], ['上節目解釋', { c: -3, p: 1 }], { rep: 30 });
+C('q10', 'sec', '最新民調：你的滿意度掉了五個百分點。', ['民調參考就好', { p: -1 , m: 1 }], ['多跑基層行程', { c: -2, m: -2, p: 2 }], { rep: 30 });
+C('q11', 'secgen', '市府前有人抗議，說要見市長。', ['請局長出去接陳情書', { p: -2 , c: 1 }], ['親自下去', { c: -2, p: 1 }], { rep: 30 });
+// 季節（每年自己出現）
+C('cny', 'sec', '春節要發福袋嗎？去年排隊排到馬路上。', ['不發', { p: -1 , m: 3 }], ['發', { p: 4, m: -5 }], { season: 2 });
+C('typhoon', 'sec', '颱風今晚登陸，明天要不要放颱風假？快決定！', ['照常上班', { fn: () => typhoonRes(false) }], ['放假', { m: -3, fn: () => typhoonRes(true) }], { season: 8, timer: 10, timeout: { q: ['tyLate', 0] } });
+F('tyLate', 'reporter', '凌晨四點才宣布颱風假，大家都已經出門了。', ['氣象一直在變', { p: -6 }], ['市長道歉', { p: -3, c: -2 }], { mood: 'sad' });
+F('tyHit', 'reporter', '昨晚風雨超大，上班族在路上被吹倒……', ['我們有發布警報', { p: -7 }], ['市長公開道歉', { p: -3, c: -2 }], { mood: 'sad' });
+F('tySun', 'info', '網路聲量：放颱風假結果大太陽，大家都去看電影了。', ['寧可保守', { p: -2 }], ['補發防災宣導', { m: -2 }]);
+F('tyOk', 'fire', '判斷正確，昨晚風雨很大，沒有人受傷。', ['謝謝第一線同仁', { p: 4, f: 'typhoonOk' }], ['發加班費', { p: 2, m: -2, c: 2, f: 'typhoonOk' }], { mood: 'smile' });
+C('budget', 'fin', '議會審總預算，方議員說要刪三成。', ['硬碰硬', { c: -8, fn: () => { if (S.s.c > 40) S.f.budgetOk = 1; } }], ['坐下來喬', { c: 5, m: -6, f: 'budgetOk' }], { season: 10 });
+C('nye', 'culture', '跨年晚會要請誰？大牌的很貴。', ['在地樂團', { p: -1, m: -2, f: 'nyeOk' }], ['請天王', { m: -12, fn: () => { if (Math.random() < .55) { S.s.p += 8; S.f.nyeOk = 1; flash('天王一開口，全場大合唱。'); } else { S.s.p -= 3; pushQ('nyeBad', 0); } } }], { season: 12 });
+F('nyeBad', 'reporter', '跨年散場交通大打結，捷運站排到凌晨兩點。', ['人太多了', { p: -2 }], ['明年加開接駁', { m: -3, c: -1 }]);
+C('elect', 'party', '選舉到了，要不要用市府資源幫自己造勢？', ['公私分明', { c: -5 }], ['用', { p: 6, k: 10 }], { season: 9, year: 4, gray: 'R' });
+// 指標太高太低：之後的卡變難、變多（不會直接結束）
+const CRISIS = [
+  ['c', v => v < 20, 'cr_c1'], ['c', v => v < 20, 'cr_c2'], ['c', v => v > 85, 'cr_c3'],
+  ['p', v => v < 20, 'cr_p1'], ['p', v => v > 85, 'cr_p2'],
+  ['m', v => v < 15, 'cr_m1'], ['m', v => v > 85, 'cr_m2'],
+  ['y', v => v < 15, 'cr_y1'], ['y', v => v > 85, 'cr_y2'],
+  ['k', v => v >= 60, 'cr_k1'], ['k', v => v >= 80, 'cr_k2']
+];
+F('cr_c1', 'speaker', '議會把總預算刪了兩成，工程款也凍結了。', ['接受刪減', { y: -5, m: 3 }], ['提覆議', { c: -4, p: 2 }], { mood: 'sad' });
+F('cr_c2', 'fang', '你的追加預算，我們拒審。', ['去議會道歉', { p: -2, c: 8 }], ['用第二預備金硬做', { m: -8, c: -3 }]);
+F('cr_c3', 'info', '名嘴說：議會成了市府的橡皮圖章。', ['議會自己會監督', { p: -2 }], ['請議員多質詢', { c: -8, p: 1 }]);
+F('cr_p1', 'secgen', '罷免連署已經在街頭擺攤了。', ['不回應', { p: -1, c: -3 }], ['出來道歉、調整政策', { p: 7, c: -4, m: -4 }], { mood: 'sad' });
+F('cr_p2', 'party', '黨中央想徵召你選更大的位子。', ['我要做滿任期', { c: -6 }], ['考慮看看', { p: -8, c: 4 }]);
+F('cr_m1', 'fin', '市庫只剩一個月的薪水，發債還是砍預算？', ['發債', { m: 18, c: -6, p: -1 }], ['全面砍預算', { m: 15, y: -6, p: -4 }], { mood: 'sad' });
+F('cr_m2', 'reporter', '市庫存了那麼多錢，路還是坑坑洞洞？', ['留給下一代', { p: -3 }], ['加碼建設', { m: -15, c: -3, y: 5 }]);
+F('cr_y1', 'info', '外媒報導 N 城是「被遺忘的首都」。', ['外媒不了解', { p: -2 }], ['緊急啟動市容計畫', { m: -10, y: 8 }]);
+F('cr_y2', 'civil', '民調：七成年輕人覺得 N 城住不起。', ['市場機制', { p: -3 }], ['加蓋社宅、租金補貼', { m: -12, y: -4, p: 5 }]);
+F('cr_k1', 'ethic', '市長，有人把你的資料寄給檢調了。', ['沒在怕', { k: 5, p: -1 }], ['主動說明、退回', { k: -25, p: -8 }]);
+F('cr_k2', 'secgen', '檢調一早到市府，帶走了你的電腦。', ['請律師', { p: -8, k: -30, f: 'caught' }], ['請假接受調查', { p: -10, c: -10, k: -30, f: 'caught' }], { mood: 'sad' });
 // 解鎖後才會出現的人
-C('u1', 'kai', '捷運通車後，我每天多睡二十分鐘！', ['那就好', { p: 3 }], ['要不要拍個宣傳片？', { p: 5, m: -2 }], { set: 'metro', mood: 'smile' });
-C('u2', 'kai', '可是車廂擠到我手機掉了。', ['尖峰加開班次', { m: -5, p: 4 }], ['大家忍一下', { p: -4 }], { set: 'metro' });
-C('u3', 'weather', '下週有颱風，要不要先清水溝？', ['再看看', { p: -3 }], ['馬上清', { m: -4, p: 4, y: 2 }], { set: 'typhoon' });
-C('u4', 'grand', '我阿嬤說你人很好，我可以幫你拍一支影片嗎？', ['好啊', { p: 6, c: -2 }], ['市府自己拍', { m: -3 }], { set: 'yuki', mood: 'smile' });
-C('u5', 'tourist', 'Your city is so beautiful! 但是地圖都看不懂。', ['做雙語標示', { m: -4, p: 3, y: 3 }], ['用手機翻譯吧', { p: -2 }], { set: 'fix5' });
-C('u6', 'agent', '天王說明年跨年還想來，價錢……可以談。', ['在地樂團就好', { p: 1 }], ['再請一次', { m: -10, p: 6 }], { set: 'nye' });
-C('u7', 'ethic2', '市長，四年乾乾淨淨，我們這邊很好做事。', ['應該的', { p: 2 }], ['繼續保持', { c: 2 }], { set: 'clean', mood: 'smile' });
-C('u8', 'fin', '預算順利三讀，各局處搶著來要錢。', ['照優先順序', { c: -3, y: 3 }], ['大家都給一點', { m: -8, c: 6 }], { set: 'budget' });
+C('u1', 'metroCo', '通車後運量破表，尖峰要加開班次嗎？', ['維持班距', { p: -2 }], ['加開', { m: -6, p: 3 }], { set: 'metro' });
+C('u2', 'metroCo', '捷運公司想在站體開商場，可以賺錢。', ['站體就是站體', { m: -3 }], ['開', { m: 8, y: -2, p: -2 }], { set: 'metro' });
+C('u3', 'fire', '下週有颱風，要不要先清水溝？', ['再看看', { p: -2 }], ['馬上清', { m: -4, y: 2 }], { set: 'typhoon' });
+C('u4', 'grand', '阿嬤退休了，換我當里長！我想在公園辦市集。', ['先申請再說', { p: -1 }], ['市府幫你辦', { m: -3, c: -2, p: 3 }], { set: 'yuki', mood: 'smile' });
+C('u5', 'tour', '觀光客變多了，要做雙語標示嗎？', ['用手機翻譯就好', { p: -1 }], ['做', { m: -4, y: 3 }], { set: 'fix5' });
+C('u6', 'culture', '天王說明年跨年還想來，價錢可以談。', ['在地樂團就好', { p: -1 }], ['再請一次', { m: -10, p: 5 }], { set: 'nye' });
+C('u7', 'ethic', '四年乾乾淨淨，廠商都知道不用送禮了。要寫成制度嗎？', ['不用，靠人就好', { c: 2 }], ['寫成制度', { c: -3, m: -2, y: 2 }], { set: 'clean', mood: 'smile' });
+C('u8', 'speaker', '預算順利三讀，議會想要一個「府會聯繫平台」。', ['依法監督就好', { c: -4 }], ['好', { c: 5, p: -3 }], { set: 'budget' });
 function typhoonRes(off) {
   const storm = Math.random() < .55;
-  if (!S.f.typhoonSeen) S.f.typhoonSeen = 1;
-  if (off && storm || !off && !storm) pushQ('tyOk', 0); else if (off) pushQ('tySun', 0); else pushQ('tyHit', 0);
+  if (off === storm) pushQ('tyOk', 0); else if (off) pushQ('tySun', 0); else pushQ('tyHit', 0);
 }
 
 // ---------- 目標：每任三個，達成解鎖新角色 ----------
 const GOALS = {
-  metro: ['🚄', '讓捷運延伸線通車', () => has('metroDone'), '捷運通勤族阿凱'],
-  typhoon: ['🌀', '撐過第一次颱風（判斷正確）', () => has('typhoonOk'), '氣象主播'],
-  yuki: ['🌳', '讓阿雪姨笑一次', () => has('yukiHappy'), '阿雪姨的孫女'],
-  fix5: ['🏗️', '修好 5 個地方', () => Object.values(S.site).filter(v => v === 'fixed').length >= 5, '外國背包客'],
-  budget: ['📑', '總預算順利三讀', () => has('budgetOk'), '主計處長的新卡'],
-  nye: ['🎆', '辦一場不出包的跨年', () => has('nyeOk'), '天王經紀人'],
-  clean: ['🧼', '做滿四年，口袋乾淨（30 以下）', () => S.n >= TERM && S.s.k < 30, '政風處長的新卡']
+  metro: ['🚄', '讓捷運延伸線通車', () => has('metroDone'), '捷運公司董事長'],
+  typhoon: ['🌀', '颱風夜判斷正確', () => has('typhoonOk'), '消防局長'],
+  yuki: ['🌳', '讓阿雪姨笑一次', () => has('yukiHappy'), '新里長小雪'],
+  fix5: ['🏗️', '修好 5 個地方', () => Object.values(S.site).filter(v => v === 'fixed').length >= 5, '觀光局長'],
+  budget: ['📑', '總預算順利三讀', () => has('budgetOk'), '議長的新卡'],
+  nye: ['🎆', '辦一場不出包的跨年', () => has('nyeOk'), '文化局長的新卡'],
+  clean: ['🧼', '四年口袋乾淨（30 以下）', () => S.n >= TERM && S.s.k < 30 && !has('caught'), '政風處長的新卡']
 };
-// ---------- 結局 ----------
-const ENDS = {
-  p0: ['🪧', '被罷免了', '民意歸零。罷免投票那天，連阿雪姨都去投了同意。'],
-  p100: ['🌟', '太紅了，被拱去選更大的', '民意破表，黨中央徵召你。N 城的工地，留給下一任。'],
-  c0: ['🔥', '府會大戰', '議會全面杯葛，總預算一毛都沒過，市府停擺。'],
-  c100: ['🤝', '府會一家親', '議會什麼都通過。名嘴說：「這不是議會，是市府的橡皮圖章。」'],
-  m0: ['💸', '財政破產', '市庫見底，公務員的薪水要先用借的。'],
-  m100: ['🏦', '市庫滿到被罵', '錢存一大堆，路還是坑坑洞洞。脆上：「錢不花在我們身上？」'],
-  y0: ['🏚️', '城市爛到上國際新聞', '外國媒體標題：「一座被遺忘的首都」。'],
-  y100: ['🏙️', '城市太美，沒人住得起', 'N 城變成全國最美的城市，房價也是。年輕人都搬走了。'],
-  k100: ['🚔', '被約談了', '口袋太滿，檢調一早到市長官邸。做壞事一定會被抓。'],
-  win: ['🌤️', '連任成功', '四年過去，N 城比你接手時好。開票那晚，你想起就職那天滿地圖的 🚧。'],
-  lose: ['🧳', '任期屆滿，沒選上', '你做滿了四年，但大家想換人試試看。']
-};
-const TITLES = {
-  builder: ['👷', '工地市長', () => Object.values(S.site).filter(v => v === 'fixed').length >= 7],
-  fan1999: ['📞', '1999 之友', () => (S.f.cit || 0) >= 5],
-  judge: ['🌀', '颱風判官', () => has('typhoonOk')],
-  promise: ['🎯', '說到做到', () => S.goals.every(g => GOALS[g][2]())],
-  deep: ['🤫', '口袋很深', () => S.s.k >= 50],
-  friend: ['🏛️', '議會好朋友', () => S.s.c >= 80],
-  quick: ['⚡', '閃電下台', () => S.n < 20]
-};
+// ---------- 稱號（只在第四年結束時給）----------
+const fixedN = () => Object.values(S.site).filter(v => v === 'fixed').length;
+const TITLES = [
+  ['caught', '🚔', '被約談的市長', () => has('caught')],
+  ['deep', '🤫', '口袋很深的市長', () => S.s.k >= 50],
+  ['builder', '👷', '工地市長', () => fixedN() >= 16],
+  ['rubber', '🤝', '府會一家親', () => S.s.c >= 85],
+  ['fight', '🔥', '天天跟議會吵架', () => S.s.c <= 20],
+  ['pretty', '🏙️', '城市很美，房價也很美', () => S.s.y >= 80],
+  ['loved', '🌤️', '好感度市長', () => S.s.p >= 70],
+  ['spend', '💸', '把錢花光的市長', () => S.s.m <= 15],
+  ['miser', '🏦', '守財市長', () => S.s.m >= 85],
+  ['ribbon', '✂️', '剪綵市長', () => has('metroDone') && S.s.y < 50],
+  ['ribbon2', '🚄', '捷運市長', () => has('metroDone') && S.s.p >= 50],
+  ['judge', '🌀', '颱風判官', () => has('typhoonOk')],
+  ['patch', '🧩', '修修補補市長', () => true]
+];
+const COMMENTS = [
+  [() => has('metroDone') && S.s.y >= 75, '捷運通了，但整個科技園區沒人住得起'],
+  [() => has('caught'), '剪綵照片很好看，可惜後來都出現在社會版'],
+  [() => S.s.k >= 50, '城市怎樣不知道，市長倒是過得不錯'],
+  [() => S.s.c <= 20, '四年都在跟議會吵架，到底有沒有在做事'],
+  [() => S.s.c >= 85, '議會什麼都通過，這樣真的好嗎'],
+  [() => S.s.m <= 15, '錢花光了，下一任要哭了'],
+  [() => S.s.m >= 85, '存了一堆錢，我家門口的路還是坑坑洞洞'],
+  [() => has('metroDone'), '捷運終於通了，雖然晚了一點'],
+  [() => fixedN() >= 12, '四年修好的東西，比前面十年還多'],
+  [() => Object.values(S.site).filter(v => v === 'rot').length >= 3, '很多地方比四年前還破'],
+  [() => Object.values(S.site).filter(v => v === 'work').length >= 3, '整座城市都在施工，圍籬比樹還多'],
+  [() => S.s.p >= 70, '說真的，這個市長不錯'],
+  [() => S.s.p <= 30, '四年很快，終於過了'],
+  [() => true, '有修好的、也有還在蓋的，N 城比四年前好一點']
+];
+const USERS = ['捷運通勤的阿凱', '早餐店阿姨', '貓奴工程師', '外送員小陳', '退休國文老師', '三寶媽在線上', '里長的頭號粉絲', '熬夜的研究生', '咖啡店店長', '公車司機老張'];
 
 // ---------- 狀態 ----------
 let S;
-function newGame(tut) {
-  S = { n: 0, s: { p: 50, c: 50, m: 50, y: 30, k: 0 }, f: {}, used: {}, q: [], site: {}, fixQ: [], tut: tut ? 1 : 0, mg: 0, recent: [],
-    goals: shuffle(Object.keys(GOALS)).slice(0, 3), term: SV.terms + 1, face: `art/A_${rnd(2) ? 'm' : 'f'}_` };
+function newGame(tut, keep) {
+  S = { n: 0, s: { p: 50, c: 50, m: 50, y: 30, k: 0 }, f: {}, used: {}, q: [], site: {}, fixQ: [], tut: tut ? 1 : 0, mg: 0, recent: [], cr: {},
+    goals: shuffle(Object.keys(GOALS)).slice(0, 3), term: 1, face: `art/A_${rnd(2) ? 'm' : 'f'}_`, log: [] };
   for (const k in SITES) S.site[k] = 'broken';
-  next();
+  if (keep) { S.s = { ...keep.s }; S.site = { ...keep.site }; S.term = keep.term + 1; S.face = keep.face; S.f = { cit: 0 }; S.fixQ = keep.fixQ.map(x => ({ id: x.id, at: Math.max(1, x.at - keep.n) })); }
+  if (!S.tut) showGoals(true); else next();
 }
 const month = () => Math.floor(S.n / 2) % 12 + 1, year = () => Math.floor(S.n / 24) + 1;
 const pushQ = (id, d) => S.q.push({ id, at: S.n + d });
@@ -288,54 +336,49 @@ function pickCard() {
   if (S.tut) return CARDS['t' + S.tut];
   const due = S.q.findIndex(x => x.at <= S.n);
   if (due >= 0) return CARDS[S.q.splice(due, 1)[0].id];
+  // 指標太高太低：危機卡（冷卻 8 張）
+  if (S.n > 4) for (const [k, test, id] of shuffle(CRISIS)) if (test(S.s[k]) && !(S.cr[id] && S.n - S.cr[id] < 8) && !(id === 'cr_k2' && has('caught'))) { S.cr[id] = S.n; return CARDS[id]; }
   // 季節卡：每月第一張
   if (S.n % 2 === 0) { const sc = Object.values(CARDS).find(c => c.season === month() && (!c.year || c.year === year()) && !S.used[c.id + ':' + year()]); if (sc) { S.used[sc.id + ':' + year()] = 1; return sc; } }
   // 打斷節奏：小遊戲
-  if (S.n - S.mg >= 13 && S.n > 6) { S.mg = S.n; return { mini: (S.mgk = (S.mgk || 0) + 1) % 2 ? 'stamp' : 'mic' }; }
-  const pool = Object.values(CARDS).filter(c => !c.tut && !c.season && !/^(a2|a2b|a3b|b2no|b2yes|m2|m3|m4|m5good|m5bad|z2|w3b|tyHit|tySun|tyOk)$/.test(c.id)
+  if (S.n - S.mg >= 13 && S.n > 6 && S.n < TERM - 2) { S.mg = S.n; return { mini: (S.mgk = (S.mgk || 0) + 1) % 2 ? 'stamp' : 'mic' }; }
+  const pool = Object.values(CARDS).filter(c => !c.tut && !c.season && !c.follow
     && (!c.set || SV.unlock.includes(c.set)) && (!c.cond || c.cond())
-    && (c.rep ? !(S.used[c.id] && S.n - S.used[c.id] < c.rep) : !S.used[c.id]) && !S.recent.includes(c.id)
-    && !S.q.some(x => x.id === c.id));
-  return pick(pool.length ? pool : [CARDS.q1, CARDS.q3, CARDS.q9]);
+    && (c.rep ? !(S.used[c.id] && S.n - S.used[c.id] < c.rep) : !S.used[c.id]) && !S.recent.includes(c.id) && !S.q.some(x => x.id === c.id));
+  return pick(pool.length ? pool : [CARDS.q1, CARDS.q8, CARDS.q10, CARDS.q11]);
 }
 function apply(e) {
-  if (!e) return;
+  if (!e) return {};
   const ch = {};
   for (const k in STATS) if (e[k]) { S.s[k] += e[k]; ch[k] = 1; }
   if (e.f) S.f[e.f] = 1;
-  if (e.work) S.site[e.work] = 'work';
-  if (e.fix) { const [id, d] = e.fix; if (S.site[id] !== 'fixed') { if (d === 0) fixNow(id); else { S.site[id] = 'work'; S.fixQ.push({ id, at: S.n + d }); } } }
+  if (e.work && S.site[e.work] !== 'fixed') S.site[e.work] = 'work';
+  if (e.fix) { const [id, d] = e.fix; if (S.site[id] !== 'fixed') { if (d === 0) fixNow(id); else if (!S.fixQ.some(x => x.id === id)) { S.site[id] = 'work'; S.fixQ.push({ id, at: S.n + d }); S.s.p -= 3; ch.p = 1; } } } // 施工期間的不便：先痛再甜
   if (e.q) pushQ(e.q[0], e.q[1]);
   if (e.fn) e.fn();
   return ch;
 }
 function fixNow(id) {
   if (S.site[id] === 'fixed') return;
-  S.site[id] = 'fixed'; S.s.y += 6; S.justFixed = id;
-  flash(`✨ ${SITES[id][3]}完工了！${DIST.find(d => d.id === SITES[id][0]).n}變漂亮了`);
+  S.site[id] = 'fixed'; S.s.y += 6; S.s.p += 3; S.justFixed = id; S.fixQ = S.fixQ.filter(x => x.id !== id);
+  flash(`✨ ${SITES[id][3]}完工了，${dn(SITES[id][0])}變漂亮了`);
 }
-// 時間往前走：工程完工、沒處理的地方越來越破
+// 時間往前走：每月稅收、工程完工、沒處理的地方越來越破
 function tick() {
   S.n++;
-  if (S.n % 2 === 0) S.s.m += 2; // 每個月的稅收
+  // 每個月：稅收進帳；民意、議會慢慢回到中間（大家會忘、新的會期）
+  if (S.n % 2 === 0) { S.s.m += 2; for (const k of ['p', 'c']) S.s[k] += (50 - S.s[k]) * .06; }
   S.fixQ = S.fixQ.filter(x => { if (x.at <= S.n) { fixNow(x.id); return false; } return true; });
   if (S.n % 14 === 0) {
     const b = Object.keys(S.site).filter(k => S.site[k] === 'broken');
-    if (b.length) { const id = pick(b); S.site[id] = 'rot'; S.s.y -= 4; S.s.p -= 2; flash(`💢 ${SITES[id][1]} ${DIST.find(d => d.id === SITES[id][0]).n}有個地方越來越破，里長在臉書開罵`); }
+    if (b.length) { const id = pick(b); S.site[id] = 'rot'; S.s.y -= 4; S.s.p -= 2; flash(`💢 ${dn(SITES[id][0])}的${SITES[id][1]}越來越破，里長在臉書開罵`); }
   }
   for (const k in S.s) S.s[k] = Math.max(0, Math.min(100, S.s[k]));
-}
-function checkEnd() {
-  const s = S.s;
-  for (const k of ['p', 'c', 'm', 'y']) { if (s[k] <= 0) return k + '0'; if (s[k] >= 100) return k + '100'; }
-  if (s.k >= 100) return 'k100';
-  if (S.n >= TERM) return s.p >= 50 && s.c >= 30 ? 'win' : 'lose';
-  return null;
 }
 
 // ---------- 畫面 ----------
 function statsHtml() {
-  return `<div class="stats">${Object.keys(STATS).map(k => { const v = S.s[k], danger = k === 'k' ? v >= 70 : (v <= 15 || v >= 85); return `<div class="st ${k}" data-st="${k}"><b class="pv"></b><div class="ic">${STATS[k][0]}</div><i><b style="width:${v}%;background:${danger ? 'var(--red)' : k === 'k' ? '#9a7bd1' : k === 'y' ? 'var(--blue)' : 'var(--green)'}"></b></i>${STATS[k][1]}</div>`; }).join('')}</div>`;
+  return `<div class="stats">${Object.keys(STATS).map(k => { const v = S.s[k], danger = k === 'k' ? v >= 60 : (v <= 20 || v >= 85); return `<div class="st ${k}" data-st="${k}"><b class="pv"></b><div class="ic">${STATS[k][0]}</div><i><b style="width:${v}%;background:${danger ? 'var(--red)' : k === 'k' ? '#9a7bd1' : k === 'y' ? 'var(--blue)' : 'var(--green)'}"></b></i>${STATS[k][1]}</div>`; }).join('')}</div>`;
 }
 function miniHtml() {
   return `<div class="mini">${DIST.map(d => { const ks = Object.keys(SITES).filter(k => SITES[k][0] === d.id), ok = ks.filter(k => S.site[k] === 'fixed').length / ks.length;
@@ -343,23 +386,22 @@ function miniHtml() {
 }
 let CUR = null, timerId = null;
 function next() {
-  const end = checkEnd(); if (end) return ending(end);
+  if (S.n >= TERM) return ending();
   const c = pickCard(); CUR = c;
   if (c.mini) return c.mini === 'stamp' ? stampGame() : micGame();
-  if (!c.tut && !c.season) { S.used[c.id] = S.n || 1; S.recent = [c.id].concat(S.recent).slice(0, 6); }
+  if (!c.tut && !c.season && !c.follow) { S.used[c.id] = S.n || 1; S.recent = [c.id].concat(S.recent).slice(0, 6); }
   render();
 }
 function render() {
-  const c = CUR, gray = c.gray;
-  const pic = c.who ? `<img src="${imgOf(c.who, c.mood)}" alt="">` : '';
+  const c = CUR;
   app.innerHTML = `${statsHtml()}
-    <div class="when"><img src="${S.face}smile.webp" style="width:28px;height:28px;border-radius:50%" alt=""><b>第 ${year()} 年 ${month()} 月</b><span class="muted">第 ${S.term} 任市長</span><span class="sp"></span><button class="tag" id="goalsB">🎯 目標 ${S.goals.filter(g => GOALS[g][2]()).length}/3</button></div>
+    <div class="when"><img src="${S.face}smile.webp" style="width:28px;height:28px;border-radius:50%" alt=""><b>第 ${year()} 年 ${month()} 月</b><span class="muted">${S.term > 1 ? `第 ${S.term} 任・` : ''}還有 ${TERM - S.n} 張</span><span class="sp"></span><button class="tag" id="goalsB">🎯 目標 ${S.goals.filter(g => GOALS[g][2]()).length}/3</button></div>
     ${miniHtml()}
     <div class="stage"><div class="under"></div><div class="cardx ${c.tut ? 'tut' : ''}" id="card">
       <span class="choice r" id="cr">${c.R[0]}</span><span class="choice l" id="cl">${c.L[0]}</span>
-      ${pic}<div class="who">${CH[c.who][0]}</div><div class="txt">${c.text}</div>
+      <img src="${imgOf(c.who, c.mood)}" alt=""><div class="who">${CH[c.who][0]}</div><div class="txt">${c.text}</div>
       ${c.timer ? '<div class="timer"><b id="tb"></b></div>' : ''}</div></div>
-    <div class="btns"><button id="L" ${c.tut === 'R' ? 'disabled' : ''} class="${gray === 'L' ? 'gray' : ''}">← ${c.L[0]}</button><button id="R" ${c.tut === 'L' ? 'disabled' : ''} class="${gray === 'R' ? 'gray' : ''}">${c.R[0]} →</button></div>
+    <div class="btns"><button id="L" ${c.tut === 'R' ? 'disabled' : ''} class="${c.gray === 'L' ? 'gray' : ''}">← ${c.L[0]}</button><button id="R" ${c.tut === 'L' ? 'disabled' : ''} class="${c.gray === 'R' ? 'gray' : ''}">${c.R[0]} →</button></div>
     <div class="hint">${c.tut === 'R' ? '👉 把卡片往右滑（或按右邊的按鈕）' : c.tut === 'L' ? '👈 把卡片往左滑' : c.tut ? '拖著卡片先不要放，看看上面哪個指標亮起來' : '往左或往右滑。拖著不放，可以看會動到哪些指標'}</div>`;
   S.justFixed = null;
   $('#goalsB').onclick = () => showGoals();
@@ -377,7 +419,7 @@ function preview(side) {
   const e = CUR[side][1];
   for (const k in STATS) if (e[k]) document.querySelector(`.st.${k}`).classList.add('on');
   if (e.fix && !e.y) document.querySelector('.st.y').classList.add('on');
-  if (e.fn) Object.keys(STATS).filter(k => k === 'p').forEach(k => document.querySelector(`.st.${k}`).classList.add('on'));
+  if (e.fn) document.querySelector('.st.p').classList.add('on');
 }
 function drag(el) {
   let x0 = null, dx = 0;
@@ -401,100 +443,122 @@ function drag(el) {
 function choose(side) {
   const c = CUR; if (!c || c.done) return; c.done = 1; clearInterval(timerId);
   const el = $('#card'); if (el) { el.classList.add('out'); el.style.transform = `translateX(${side === 'L' ? -420 : 420}px) rotate(${side === 'L' ? -20 : 20}deg)`; }
-  const e = side === 'T' ? c.timeout : c[side][1];
-  const ch = apply(e) || {};
+  const ch = apply(side === 'T' ? c.timeout : c[side][1]);
   if (/^q\d/.test(c.id) && side === 'R') S.f.cit = (S.f.cit || 0) + 1;
-  if (c.tut) { S.tut = c.tut === 'any' ? 0 : S.tut + 1; }
+  if (c.tut) S.tut = c.tut === 'any' ? 0 : S.tut + 1;
   setTimeout(() => { delete c.done; if (c.tut === 'any') { tick(); showGoals(true); return; } if (!c.tut) tick(); next(); Object.keys(ch).forEach(k => { const x = document.querySelector(`.st.${k}`); if (x) x.classList.add('flash'); }); }, 260);
 }
 function flash(t) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 2600); }
 function sheet(html, after) { const d = document.createElement('div'); d.className = 'sheet'; d.innerHTML = `<div class="box">${html}</div>`; document.body.appendChild(d); after && after(d); return d; }
 function showGoals(first) {
-  sheet(`<h2>🎯 這一任的三個目標</h2>${first ? '<div class="muted">達成會解鎖新角色，下一任市長就看得到。</div>' : ''}
-    ${S.goals.map(g => `<div class="goal"><span style="font-size:22px">${GOALS[g][2]() ? '✅' : GOALS[g][0]}</span><span>${GOALS[g][1]}<br><small class="muted">解鎖：${SV.unlock.includes(g) ? '已解鎖 ' : ''}${GOALS[g][3]}</small></span></div>`).join('')}
-    <div class="muted" style="margin-top:8px">指標太高、太低都會出事。口袋滿了一定會被查。</div>
-    <button class="btn" id="x">${first ? '開始上任 →' : '繼續'}</button>`, d => d.querySelector('#x').onclick = () => { d.remove(); if (first) next(); });
+  sheet(`<h2>🎯 這一任的三個目標</h2>${first ? '<div class="muted">四年 96 張卡。達成目標會解鎖新角色，下一局就看得到。</div>' : ''}
+    ${S.goals.map(g => `<div class="goal"><span style="font-size:22px">${GOALS[g][2]() ? '✅' : GOALS[g][0]}</span><span>${GOALS[g][1]}<br><small class="muted">解鎖：${GOALS[g][3]}${SV.unlock.includes(g) ? '（已解鎖）' : ''}</small></span></div>`).join('')}
+    <div class="muted" style="margin-top:8px">沒有標準答案。指標太高或太低，之後的日子會比較難過。</div>
+    <button class="btn" id="x">${first ? '開始 →' : '繼續'}</button>`, d => d.querySelector('#x').onclick = () => { d.remove(); if (first) next(); });
 }
 
-// ---------- 小遊戲（10 秒左右）----------
-const DOCS = [['路燈維修經費 12 萬', 1], ['里民活動中心冷氣汰換', 1], ['颱風前清淤急件', 1], ['公園植栽採購，附估價單三份', 1], ['人行道改善工程，金額 3,000,000,0 元', 0, '金額多了一個 0'],
-  ['議員辦公室「建議」得標廠商名單', 0, '關說條子'], ['招標文件（附件：無）', 0, '附件不見了'], ['市長出國考察，行程：購物三天', 0, '這不是考察'], ['同一筆款項，第二次請款', 0, '重複請款'], ['學校營養午餐食材驗收', 1]];
+// ---------- 小遊戲：不當場打分，後果晚一點才冒出來 ----------
+const DOCS = [['路燈維修經費 12 萬', ''], ['里民活動中心冷氣汰換', ''], ['颱風前清淤急件', 'urgent'], ['公園植栽採購，附估價單三份', ''], ['學校營養午餐食材驗收', ''],
+  ['人行道改善工程，金額 3,000,000,0 元', 'zero'], ['議員辦公室「建議」得標廠商名單', 'favor'], ['招標文件（附件：無）', 'noatt'], ['局處出國考察，行程：購物三天', 'trip'], ['同一筆款項，第二次請款', 'twice']];
+F('d_zero', 'gao', '三個月前你批的人行道工程，金額多了一個 0，我今天開記者會。', ['承辦人打錯的', { c: -4, p: -2 }], ['市長負責、懲處', { p: -2, m: -2, c: 2 }]);
+F('d_favor', 'reporter', '議員的關說條子被你批了「協助」，我們拿到照片。', ['只是轉交', { p: -3, k: 4 }], ['撤回、移送政風', { c: -8, p: -1 }]);
+F('d_noatt', 'work', '那個沒附件的標案，廠商做到一半說「圖不對」。', ['追加預算', { m: -8 }], ['重新發包', { y: -4, p: -2 }]);
+F('d_trip', 'reporter', '局處出國考察，三天都在購物，照片流出來了。', ['行程是旅行社排的', { p: -3 }], ['追回旅費、記過', { c: -4, p: -1 }]);
+F('d_twice', 'fin', '上次重複請款的錢，廠商不肯還。', ['打官司', { m: -3, c: -2 }], ['算了', { m: -8 }]);
+F('d_urgent', 'yuki', '你退回的清淤急件還在補資料，結果大雨巷子淹了。', ['依法要補資料', { p: -3 }], ['特准先辦', { m: -4, c: -2 }], { mood: 'sad' });
+F('d_late', 'secgen', '上次沒批完的公文，在各局處旅行了兩個月。', ['流程本來就這樣', { p: -2 }], ['推公文電子化', { m: -5, c: -1 }]);
 function stampGame() {
-  const docs = shuffle(DOCS).slice(0, 5); let i = 0, ok = 0, bad = [];
+  const docs = shuffle(DOCS).slice(0, 5), did = []; let i = 0, fin = false;
   const t0 = Date.now(), T = 12000;
   const draw = () => {
-    if (i >= docs.length || Date.now() - t0 > T) return done();
-    app.innerHTML = `${statsHtml()}<div class="mg"><h2>📑 公文快速批</h2><div class="muted">12 秒內批完 5 份。有問題的要退回！（${i + 1}/5）</div><div class="timer"><b id="tb"></b></div>
+    if (i >= docs.length) return done();
+    app.innerHTML = `${statsHtml()}<div class="mg"><h2>📑 公文快速批</h2><div class="muted">12 秒，桌上 5 份公文（${i + 1}/5）</div><div class="timer"><b id="tb"></b></div>
       <div class="doc"><small>簽呈・${['工務局', '交通局', '社會局', '秘書處', '主計處'][i]}</small>${docs[i][0]}</div>
       <div class="mgb"><button style="background:var(--red)" id="no">退回</button><button style="background:var(--green)" id="yes">核可</button></div></div>`;
-    $('#yes').onclick = () => { if (docs[i][1]) ok++; else bad.push(docs[i]); i++; draw(); };
-    $('#no').onclick = () => { if (!docs[i][1]) ok++; i++; draw(); };
+    $('#yes').onclick = () => { did.push([docs[i], 1]); i++; draw(); };
+    $('#no').onclick = () => { did.push([docs[i], 0]); i++; draw(); };
   };
-  const iv = setInterval(() => { const tb = $('#tb'); if (tb) tb.style.width = Math.max(0, 100 - (Date.now() - t0) / T * 100) + '%'; if (Date.now() - t0 > T) { clearInterval(iv); if (i < docs.length) done(); } }, 100);
-  let fin = false;
+  const iv = setInterval(() => { const tb = $('#tb'); if (tb) tb.style.width = Math.max(0, 100 - (Date.now() - t0) / T * 100) + '%'; if (Date.now() - t0 > T) done(); }, 100);
   const done = () => {
     if (fin) return; fin = true; clearInterval(iv);
-    const miss = docs.length - i;
-    S.s.p += ok - 2 - miss; S.s.c += bad.some(b => b[2] === '關說條子') ? 4 : 0; S.s.k += bad.some(b => b[2] === '關說條子') ? 6 : 0; S.s.m -= bad.filter(b => /0 元|重複/.test(b[0])).length * 6;
-    sheet(`<h2>📑 批完了：${ok}/5 正確</h2>${bad.length ? bad.map(b => `<div class="goal">😱 你核可了「${b[0]}」<br><small class="muted">${b[2]}</small></div>`).join('') : ''}${miss ? `<div class="goal">⏰ 還有 ${miss} 份沒批，公文旅行去了</div>` : ''}${!bad.length && !miss ? '<div class="goal">✨ 一份都沒放過，承辦人嚇到了</div>' : ''}<button class="btn" id="x">繼續</button>`, d => d.querySelector('#x').onclick = () => { d.remove(); tick(); next(); });
+    let d = 4;
+    for (const [doc, yes] of did) { const k = doc[1]; if (yes && k && k !== 'urgent') pushQ('d_' + k, d += 3 + rnd(4)); if (!yes && k === 'urgent') pushQ('d_urgent', d += 2); }
+    if (did.length < docs.length) pushQ('d_late', d + 5);
+    S.s.k += did.some(x => x[0][1] === 'favor' && x[1]) ? 4 : 0;
+    sheet(`<h2>📑 你今天批了什麼</h2><div class="list">${did.map(([doc, yes]) => `<div>${yes ? '✅ 核可' : '↩️ 退回'}：${doc[0]}</div>`).join('')}${docs.slice(did.length).map(doc => `<div>⏳ 沒批到：${doc[0]}</div>`).join('')}</div><div class="muted" style="margin-top:6px">批了就是批了。之後會怎樣，再看看。</div><button class="btn" id="x">繼續</button>`, x => x.querySelector('#x').onclick = () => { x.remove(); tick(); next(); });
   };
   draw();
 }
-const QS = [['市長，請問捷運什麼時候通？', 1], ['市長，下週的行程方便說嗎？', 1], ['市長，您覺得 N 城的貓多嗎？', 1], ['市長，您的口袋……', 0], ['網傳你跟廠商吃飯？', 0], ['你兒子是不是……（離題了）', 0], ['你今天領帶是哪買的？', 1], ['聽說你要選總統？', 0], ['方議員說你說謊？', 0]];
+const QS = [['捷運什麼時候通？', 1], ['下週的行程方便說嗎？', 1], ['N 城的流浪貓怎麼辦？', 1], ['今天領帶哪裡買的？', 1], ['營養午餐會不會漲價？', 1],
+  ['網傳你跟廠商吃飯？', 0], ['聽說你要選總統？', 0], ['方議員說你說謊？', 0], ['副市長是不是要跳槽？', 0]];
+F('mic_hit', 'info', '網路聲量：記者會上你沒擋的那題，今天上了頭條。', ['不回應', { p: -2 }], ['再開一場說明', { p: -1, c: -2 }]);
+F('mic_dodge', 'info', '網路聲量：你擋掉的那題其實很普通，大家說你不敢回答。', ['不回應', { p: -2 }], ['補一場聯訪', { c: -2, m: -1 }]);
 function micGame() {
-  let hit = 0, wrong = 0, missed = 0, n = 0, fin = false;
+  const blocked = [], passed = []; let fin = false;
   const t0 = Date.now(), T = 10000;
-  app.innerHTML = `${statsHtml()}<div class="mg"><h2>🎤 記者會擋麥克風</h2><div class="muted">10 秒內，點掉🟥紅色的地雷問題，藍色的讓它過</div><div class="timer"><b id="tb"></b></div><div class="field" id="fd"></div></div>`;
+  app.innerHTML = `${statsHtml()}<div class="mg"><h2>🎤 記者會</h2><div class="muted">10 秒。記者一直丟問題，點一下＝「這題不回答」</div><div class="timer"><b id="tb"></b></div><div class="field" id="fd"></div></div>`;
   const fd = $('#fd');
   const spawn = () => {
     if (fin) return;
-    const q = pick(QS), b = document.createElement('button'); n++;
-    b.className = 'q ' + (q[1] ? 'ok' : 'bad'); b.textContent = q[0];
+    const q = pick(QS), b = document.createElement('button');
+    b.className = 'q ' + (q[1] ? 'ok' : 'bad'); b.textContent = '市長，' + q[0];
     b.style.left = rnd(40) + '%'; b.style.top = rnd(80) + '%';
-    b.onclick = () => { if (q[1]) wrong++; else hit++; b.remove(); };
+    b.onclick = () => { blocked.push(q); b.remove(); };
     fd.appendChild(b);
-    setTimeout(() => { if (b.parentNode) { if (!q[1]) missed++; b.remove(); } }, 1800);
+    setTimeout(() => { if (b.parentNode) { passed.push(q); b.remove(); } }, 1800);
   };
   const sp = setInterval(spawn, 700); spawn();
   const iv = setInterval(() => { const tb = $('#tb'); if (tb) tb.style.width = Math.max(0, 100 - (Date.now() - t0) / T * 100) + '%'; if (Date.now() - t0 > T) end(); }, 100);
   const end = () => {
     if (fin) return; fin = true; clearInterval(sp); clearInterval(iv);
-    S.s.p += hit - missed - wrong; S.s.c += wrong ? -2 : 1;
-    sheet(`<h2>🎤 記者會結束</h2><div class="goal">🛡️ 擋下 ${hit} 個地雷問題</div><div class="goal">💥 漏掉 ${missed} 個（明天上頭條）</div><div class="goal">🙊 擋錯 ${wrong} 個好問題（被說「不敢回答」）</div><button class="btn" id="x">繼續</button>`, d => d.querySelector('#x').onclick = () => { d.remove(); tick(); next(); });
+    if (passed.some(q => !q[1])) pushQ('mic_hit', 3 + rnd(3));
+    if (blocked.filter(q => q[1]).length >= 2) pushQ('mic_dodge', 6 + rnd(3));
+    const u = a => [...new Set(a.map(q => q[0]))];
+    sheet(`<h2>🎤 記者會結束</h2><div class="list"><div>🙊 你沒回答的：${u(blocked).join('、') || '沒有'}</div><div>🗣️ 你回答了的：${u(passed).join('、') || '沒有'}</div></div><div class="muted" style="margin-top:6px">明天的新聞會怎麼寫，再看看。</div><button class="btn" id="x">繼續</button>`, x => x.querySelector('#x').onclick = () => { x.remove(); tick(); next(); });
   };
 }
 
-// ---------- 結局 → 下一任 ----------
-function ending(id) {
-  clearInterval(timerId);
-  const E = ENDS[id], newEnd = !SV.ends.includes(id);
-  if (newEnd) SV.ends.push(id);
+// ---------- 四年後的 N 城 ----------
+const word = (k, v) => k === 'k' ? (v >= 60 ? '滿到有人在查' : v >= 30 ? '有點鼓' : '乾乾淨淨') : v >= 85 ? '高到出事' : v >= 60 ? '不錯' : v >= 40 ? '普通' : v >= 20 ? '很差' : '谷底';
+function ending() {
+  clearInterval(timerId); CUR = null;
   const gotGoals = S.goals.filter(g => GOALS[g][2]()), newUnlock = gotGoals.filter(g => !SV.unlock.includes(g));
   SV.unlock = SV.unlock.concat(newUnlock);
-  const titles = Object.keys(TITLES).filter(t => TITLES[t][2]()), newT = titles.filter(t => !SV.titles.includes(t));
-  SV.titles = SV.titles.concat(newT); SV.terms++; save();
-  const fixed = Object.values(S.site).filter(v => v === 'fixed').length;
-  app.innerHTML = `<div class="ending"><img src="${S.face}${id === 'win' || id === 'p100' ? 'big' : 'sad'}.webp" style="width:84px;height:84px;border-radius:50%" alt=""><div class="bigE">${E[0]}</div><h2>${E[1]}${newEnd ? ' 🆕' : ''}</h2><p>${E[2]}</p>
-    <div class="muted">第 ${S.term} 任市長・在任 ${Math.floor(S.n / 24) ? Math.floor(S.n / 24) + ' 年 ' : ''}${Math.floor(S.n / 2) % 12} 個月・修好 ${fixed} 個地方</div>
-    <div class="card" style="text-align:left">${S.goals.map(g => `<div class="goal"><span>${GOALS[g][2]() ? '✅' : '⬜'} ${GOALS[g][1]}${newUnlock.includes(g) ? `<br><small style="color:var(--green)">🔓 解鎖新角色：${GOALS[g][3]}</small>` : ''}</span></div>`).join('')}</div>
-    ${titles.length ? `<div class="card">${titles.map(t => `${TITLES[t][0]} ${TITLES[t][1]}${newT.includes(t) ? ' 🆕' : ''}`).join('　')}</div>` : ''}
-    <button class="btn" id="again">下一任市長 →</button><button class="btn ghost" id="gal">📖 圖鑑</button></div>`;
-  $('#again').onclick = () => newGame(false);
-  $('#gal').onclick = gallery;
+  const titles = TITLES.filter(t => t[3]()), main = titles[0], newT = titles.filter(t => !SV.titles.includes(t[0]));
+  SV.titles = SV.titles.concat(newT.map(t => t[0])); SV.terms++; save();
+  const cms = COMMENTS.filter(c => c[0]()).map(c => c[1]), us = shuffle(USERS);
+  const distLine = d => { const ks = Object.keys(SITES).filter(k => SITES[k][0] === d.id), st = ks.map(k => S.site[k]);
+    const f = st.filter(x => x === 'fixed').length, r = st.filter(x => x === 'rot').length, w = st.filter(x => x === 'work').length;
+    return f === ks.length ? '✨ 整區都變漂亮了' : f > r && f >= w && f ? '🌤️ 變漂亮了' : w >= f && w > r && w ? '🏗️ 蓋到一半' : r ? '💢 比四年前更破' : '😐 還是老樣子'; };
+  app.innerHTML = `<div class="ending"><h2>🗺️ N 城，四年後</h2>
+    <div class="endmap">${DIST.map(d => { const ks = Object.keys(SITES).filter(k => SITES[k][0] === d.id), ok = ks.filter(k => S.site[k] === 'fixed').length / ks.length;
+      return `<div style="background:${d.c};filter:saturate(${.3 + ok * .9})"><b>${d.n}</b><div class="em">${ks.map(k => `<span class="${S.site[k]}">${S.site[k] === 'fixed' ? SITES[k][2] : SITES[k][1]}</span>`).join('')}</div>${distLine(d)}</div>`; }).join('')}</div>
+    <div class="fin">${['p', 'c', 'm', 'k'].map(k => `<div><b>${STATS[k][0]}${Math.round(S.s[k])}</b>${STATS[k][1]}<br>${word(k, S.s[k])}</div>`).join('')}</div>
+    <div class="card"><div class="muted">你的稱號</div><div class="ttl">${main[1]} ${main[2]}${newT.some(t => t[0] === main[0]) ? ' 🆕' : ''}</div>${titles.length > 1 ? `<div class="muted">也是：${titles.slice(1, 4).map(t => t[1] + t[2]).join('、')}</div>` : ''}
+      <div class="post"><b>${us[0]}</b>${cms[0]}</div>${cms[1] && cms[1] !== cms[0] ? `<div class="post"><b>${us[1]}</b>${cms[1]}</div>` : ''}</div>
+    <div class="card" style="text-align:left">${S.goals.map(g => `<div class="goal"><span>${GOALS[g][2]() ? '✅' : '⬜'} ${GOALS[g][1]}${newUnlock.includes(g) ? `<br><small style="color:var(--green)">🔓 解鎖：${GOALS[g][3]}（下一局會出現）</small>` : ''}</span></div>`).join('')}</div>
+    <button class="btn" id="run">要連任嗎？</button><button class="btn ghost" id="again">再來一次</button><button class="btn ghost" id="gal">📖 圖鑑</button></div>`;
+  $('#run').onclick = election; $('#again').onclick = () => newGame(false); $('#gal').onclick = gallery;
+}
+function election() {
+  const keep = { s: S.s, site: S.site, term: S.term, face: S.face, fixQ: S.fixQ, n: S.n };
+  if (has('caught')) return sheet(`<h2>🚔 黨部不提名你</h2><div class="say card">你還在接受調查。黨部主委：「這次就先休息吧。」</div><button class="btn" id="x">再來一次</button>`, d => d.querySelector('#x').onclick = () => { d.remove(); newGame(false); });
+  const win = S.s.p >= 50 || (S.s.p >= 40 && Math.random() < (S.s.p - 35) / 20);
+  sheet(win ? `<h2>🎉 連任成功</h2><div class="card">開票那晚，你想起就職那天滿地圖的 🚧。第二任開始，N 城照現在的樣子接著修。</div><button class="btn" id="x">第 ${S.term + 1} 任開始 →</button>`
+    : `<h2>🧳 沒選上</h2><div class="card">大家想換人試試看。你在市府的最後一天，阿雪姨送來一盒鳳梨酥。</div><button class="btn" id="x">再來一次</button>`, d => d.querySelector('#x').onclick = () => { d.remove(); win ? newGame(false, keep) : newGame(false); });
 }
 function gallery() {
-  sheet(`<h2>📖 圖鑑</h2><div class="muted">結局 ${SV.ends.length}/${Object.keys(ENDS).length}</div><div class="gal">${Object.keys(ENDS).map(k => `<div class="${SV.ends.includes(k) ? '' : 'no'}"><b>${SV.ends.includes(k) ? ENDS[k][0] : '❓'}</b>${SV.ends.includes(k) ? ENDS[k][1] : '？？？'}</div>`).join('')}</div>
-    <h2 style="margin-top:14px">稱號 ${SV.titles.length}/${Object.keys(TITLES).length}</h2><div class="gal">${Object.keys(TITLES).map(k => `<div class="${SV.titles.includes(k) ? '' : 'no'}"><b>${TITLES[k][0]}</b>${SV.titles.includes(k) ? TITLES[k][1] : '？？？'}</div>`).join('')}</div>
+  sheet(`<h2>📖 圖鑑</h2><div class="muted">稱號 ${SV.titles.length}/${TITLES.length}</div><div class="gal">${TITLES.map(t => `<div class="${SV.titles.includes(t[0]) ? '' : 'no'}"><b>${SV.titles.includes(t[0]) ? t[1] : '❓'}</b>${SV.titles.includes(t[0]) ? t[2] : '？？？'}</div>`).join('')}</div>
     <h2 style="margin-top:14px">解鎖的角色 ${SV.unlock.length}/${Object.keys(GOALS).length}</h2><div class="gal">${Object.keys(GOALS).map(k => `<div class="${SV.unlock.includes(k) ? '' : 'no'}"><b>${GOALS[k][0]}</b>${SV.unlock.includes(k) ? GOALS[k][3] : GOALS[k][1]}</div>`).join('')}</div>
     <button class="btn" id="x">關閉</button>`, d => d.querySelector('#x').onclick = () => d.remove());
 }
 
 // ---------- 標題 ----------
 function title() {
-  app.innerHTML = `<h1>🏙️ 修城市</h1><p class="center muted">《我推的市長》系列・試玩版 0.3（左右滑）</p>
-    <div class="card"><p><b>你是剛選上的 N 城市長。</b>百廢待舉。</p><p>里長、議員、局長、記者、廠商……每個人都帶著一句話來找你。<b>往右滑答應，往左滑拒絕。</b></p><p>民意、議會、財政、城市，太高太低都會出事；口袋滿了，一定會被查。</p></div>
-    <button class="btn" id="go">${SV.terms ? `第 ${SV.terms + 1} 任市長上任 →` : '上任（有教學）→'}</button>${SV.terms ? '<button class="btn ghost" id="tut">重看教學</button><button class="btn ghost" id="gal">📖 圖鑑</button>' : ''}
-    <p class="center muted">人物、政黨、城市全部虛構・摩卡與貓貓小隊<br><a href="v02.html" style="color:inherit">舊版 0.2</a>・<a href="v03map.html" style="color:inherit">地圖版</a></p>`;
+  app.innerHTML = `<h1>🏙️ 修城市</h1><p class="center muted">《我推的市長》系列・試玩版 0.4</p>
+    <div class="card"><p><b>你是剛選上的 N 城市長。</b>百廢待舉。</p><p>副市長、局長、議員、里長、記者、黨部、廠商……每個人都帶著一句話來找你。<b>往右滑答應，往左滑拒絕。</b>沒有標準答案，只有代價。</p><p>四年 96 張卡。最後，你會看到 N 城變成什麼樣子。</p></div>
+    <button class="btn" id="go">${SV.terms ? '上任 →' : '上任（有教學）→'}</button>${SV.terms ? '<button class="btn ghost" id="tut">重看教學</button><button class="btn ghost" id="gal">📖 圖鑑</button>' : ''}
+    <p class="center muted">人物、政黨、城市全部虛構・摩卡與貓貓小隊<br>舊版：<a href="v02.html" style="color:inherit">0.2</a>・<a href="v03map.html" style="color:inherit">地圖版</a>・<a href="v03.html" style="color:inherit">0.3 左右滑</a></p>`;
   $('#go').onclick = () => newGame(!SV.terms);
   if ($('#tut')) $('#tut').onclick = () => newGame(true);
   if ($('#gal')) $('#gal').onclick = gallery;
