@@ -317,6 +317,7 @@ function fixNow(id) {
 // 時間往前走：工程完工、沒處理的地方越來越破
 function tick() {
   S.n++;
+  if (S.n % 2 === 0) S.s.m += 2; // 每個月的稅收
   S.fixQ = S.fixQ.filter(x => { if (x.at <= S.n) { fixNow(x.id); return false; } return true; });
   if (S.n % 14 === 0) {
     const b = Object.keys(S.site).filter(k => S.site[k] === 'broken');
