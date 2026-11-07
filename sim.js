@@ -52,5 +52,5 @@ for (const s of ['random', 'pledger', 'drawer', 'balanced', 'gray']) {
   }
   console.log(s.padEnd(9), Object.entries(c).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${(v / N * 100).toFixed(1)}%`).join('  '));
   if (process.argv[2] === '-v') console.log('   稱號', Object.entries(titles).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${(v / N * 100).toFixed(0)}%`).join(' '));
-  if (process.argv[2] === '-v') console.log('   抽屜', avg.drawer.toFixed(1), '政見', avg.pledges.toFixed(1), '爆表', avg.overflow.toFixed(1), '｜', Object.entries(st).map(([k, v]) => `${k} ${v.toFixed(0)}`).join(' '), '｜低', JSON.stringify(low), '高', JSON.stringify(high));
+  if (process.argv[2] === '-v') console.log('   卷宗', avg.drawer.toFixed(1), '政見', avg.pledges.toFixed(1), '爆表', avg.overflow.toFixed(1), '｜', Object.entries(st).map(([k, v]) => `${k} ${v.toFixed(0)}`).join(' '), '｜低', JSON.stringify(low), '高', JSON.stringify(high));
 }

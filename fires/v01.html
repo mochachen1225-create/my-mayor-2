@@ -331,9 +331,9 @@ function resultScreen() {
 function endingScreen(early) {
   const score = S.pop * 0.5 + S.council * 0.3 + S.budget * 0.2 + S.pledgesDone * 8 - S.disasters * 3;
   const E = early ? { e: '🪧', t: '被罷免了', d: '民意或議會歸零，罷免案通過。選上真的是災難的開始。' }
-    : score >= 60 ? { e: '🌤️', t: '連任成功', d: `四年滅了 ${S.put} 團火，兌現 ${S.pledgesDone} 個政見。連任那晚，你想起就職那天的抽屜。` }
+    : score >= 60 ? { e: '🌤️', t: '連任成功', d: `四年滅了 ${S.put} 團火，兌現 ${S.pledgesDone} 個政見。連任那晚，你想起就職那天桌上那疊卷宗。` }
     : score >= 42 ? { e: '😮‍💨', t: '驚險連任', d: `贏了，但只贏一點點。燒成災難的有 ${S.disasters} 團，大家都還記得。` }
-    : { e: '📦', t: '一任市長', d: `四年過去，${S.disasters} 團火燒成災難。下一任市長打開抽屜，看到的是你留下的東西。` };
+    : { e: '📦', t: '一任市長', d: `四年過去，${S.disasters} 團火燒成災難。下一任市長坐到這張桌子前，看到的是你留下的東西。` };
   const fake = S.team.filter(p => p.trait !== 'good');
   app.innerHTML = `<div class="ending"><div class="big">${E.e}</div><h2>${E.t}</h2><p>${E.d}</p>
     <div class="card" style="text-align:left">🔥 滅火 ${S.put} 團・💥 燒成災難 ${S.disasters} 團・✂️ 政見 ${S.pledgesDone} 個<br>😳 團隊的真面目：${fake.length ? fake.map(p => `${p.n}（${TRAITS[p.trait].n}）`).join('、') : '大家都靠得住，難得'}</div>

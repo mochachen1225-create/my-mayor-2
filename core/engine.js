@@ -1,5 +1,5 @@
-// 「我推的XX」系列共用骨架：回合、數值、事件牌組、組閣、抽屜（前人留下的爛攤子）、政見、結局、系列存檔
-// 只有邏輯，不碰畫面；職業包（careers/*/data.js）提供數值、事件、組閣、抽屜、政見、結局。
+// 「我推的XX」系列共用骨架：回合、數值、事件牌組、組閣、前任的桌上（前人留下的爛攤子，程式裡叫 drawer）、政見、結局、系列存檔
+// 只有邏輯，不碰畫面；職業包（careers/*/data.js）提供數值、事件、組閣、前任卷宗、政見、結局。
 // 在 Node 可以直接 require，用來跑平衡模擬。
 
 function makeRng(seed) {
@@ -24,7 +24,7 @@ function newRun(career, opts = {}) {
   // 你的背景與分管領域（開場選）
   g.background = opts.background || null; g.portfolio = opts.portfolio || null;
   if (career.backgrounds && g.background) applyFx(career, g, career.backgrounds[g.background].fx || {});
-  // 每局只出現部分抽屜公文（連鎖關係照舊）
+  // 每局只出現部分前任卷宗（連鎖關係照舊）
   const ids = career.drawerSubset ? career.drawerSubset(rng, g) : career.drawer.map(d => d.id);
   g.drawer = career.drawer.filter(d => ids.includes(d.id)).map(d => ({ id: d.id, size: d.look, real: d.real, open: !!d.start, known: false, done: false, shelved: 0, blocked: 0 }));
   // 開局隨機的議會生態
@@ -165,7 +165,7 @@ function chooseEvent(career, g, ev, i) {
   return { fx, hits, text: typeof use.r === 'function' ? use.r(g) : use.r, verdict, alt: alt && alt.t };
 }
 
-// ---------- 抽屜 ----------
+// ---------- 前任的桌上（drawer）----------
 function drawerCost(career, g, d) { return Math.round(d.real * career.costPer * (d.costMul || 1) * costMulFor(career, g, d.id)); }
 function openChain(career, g, d) {
   const def = career.drawer.find(x => x.id === d.id), opened = [];
@@ -226,7 +226,7 @@ function useDrawer(career, g, id, act, choice) {
 }
 
 // ---------- 政見 ----------
-// 每張政見依序走 career.pledgeSteps；每一步可能被抽屜卡住或失敗
+// 每張政見依序走 career.pledgeSteps；每一步可能被前任卷宗卡住或失敗
 function pledgeCheck(career, g, p) {
   const step = career.pledgeSteps[p.step];
   const block = (step.blockedBy || []).find(id => { const d = g.drawer.find(x => x.id === id); return d && d.open && !d.done; }); // 挖出來之後才會卡

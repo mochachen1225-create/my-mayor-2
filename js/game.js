@@ -28,7 +28,7 @@ function shareImage(e, ti, tr, t) {
   const wrap = (s, y, size, maxW) => { x.font = font(size); let line = '', yy = y; for (const ch of s) { if (x.measureText(line + ch).width > maxW) { x.fillText(line, W / 2, yy); line = ''; yy += size * 1.5; } line += ch; } x.fillText(line, W / 2, yy); return yy; };
   x.fillStyle = '#4b4740'; let y = wrap(txt(e.text).replace(/\n/g, ''), 540, 36, W - 220);
   y += 90; x.fillStyle = '#2b2f36'; x.font = font(42);
-  [`🏅 ${ti.name}`, `${tr.emoji} ${T('老闆的真面目：{0}', tr.name)}`, `🗄️ ${T('爛攤子 {0}／{1}', t.drawer, t.total)}　📣 ${T('政見 {0}／{1}', t.pledges, G.pledges.length)}`].forEach((l, i) => x.fillText(l, W / 2, y + i * 70));
+  [`🏅 ${ti.name}`, `${tr.emoji} ${T('老闆的真面目：{0}', tr.name)}`, `🗂️ ${T('爛攤子 {0}／{1}', t.drawer, t.total)}　📣 ${T('政見 {0}／{1}', t.pledges, G.pledges.length)}`].forEach((l, i) => x.fillText(l, W / 2, y + i * 70));
   x.fillStyle = '#e0a526'; x.font = font(34); x.fillText(T('你以為選上就萬歲了？不，是大坑的開始。'), W / 2, H - 110);
   c.toBlob(async blob => {
     const file = new File([blob], 'my-mayor-2.png', { type: 'image/png' });
@@ -83,7 +83,7 @@ const CRISP = {
   down: [T('市府到底在幹嘛'), T('我就知道'), T('四年很快就過了喔'), T('笑死，又來'), T('稅金是這樣花的？'), T('記者會開完然後呢'), T('不意外')],
   mixed: [T('方向對啦，但也太慢'), T('先不要高興太早'), T('做是有做，但誰要付錢？'), T('里長說好就好嗎'), T('好壞參半，再觀察')],
   blame: [T('又是前任'), T('前任：我人在家裡也中槍'), T('你們上任幾天了？'), T('前任這個梗要用幾年')],
-  reveal: [T('抽屜裡到底還有多少東西'), T('這個市府是俄羅斯娃娃嗎'), T('前任留下的不是抽屜，是寶箱'), T('明天又會挖出什麼')],
+  reveal: [T('桌上到底還壓著多少東西'), T('這個市府是俄羅斯娃娃嗎'), T('前任留下的不是一疊卷宗，是一座山'), T('明天又會挖出什麼')],
   pledge: [T('政見跳票倒數中'), T('真的做了？我去看看'), T('剪綵剪很快，蓋很慢'), T('這個政見我記得，有做喔')]
 };
 let REGULAR = null; // 每局有一位常客，跨回合會回來
@@ -105,7 +105,7 @@ const moodOf = fx => { const sum = Object.entries(fx || {}).filter(([k]) => k ==
 function titleScreen() {
   show(`
     <div class="title-hero">
-      <div class="drawer-art">🗄️</div>
+      <div class="drawer-art">🗂️</div>
       <h1>${T('我推的市長')}</h1>
       <div class="sub">${T('上任篇')}・${C.subtitle}</div>
       <p class="tagline">${C.tagline}<br>${C.taglineMore.join('<br>')}</p>
@@ -165,7 +165,7 @@ function introScreen() {
     <h2>${T('📋 你是誰')}</h2>
     <div class="card intro">
       <p>👔 ${T('你是 {0} 任命的<b>副市長</b>，背景：{1}。你分管<b>{2}</b>的局處，這些事你可以直接督導。', esc(BOSS.name), C.backgrounds[G.background].name, C.portfolios[G.portfolio].name)}</p>
-      <p>🗄️ ${T('前任做了八年，留下一整個<b>抽屜的爛攤子</b>。有些看起來很小，打開才知道很大；有些會連鎖。')}</p>
+      <p>🗂️ ${T('前任做了八年，在桌上留下一整疊<b>沒處理的卷宗</b>。有些看起來很小，打開才知道很大；有些會連鎖。')}</p>
       <p>📣 ${T('市長選前開了很多<b>政見</b>，每一個都要過議會、要發包、要剪綵。爛攤子會卡住政見。')}</p>
       <p>🤝 ${T('另外還有兩位副市長，是同事，也是對手：{0}（{1}）和{2}（{3}）。', C.rivals[0].name, C.rivals[0].desc, C.rivals[1].name, C.rivals[1].desc)}</p>
       <p>⏳ ${T('任期四年，切成 12 回合。每回合先處理一件突發事件，再<b>做 2 件事</b>。')}</p>
@@ -300,11 +300,11 @@ function workScreen() {
   const nth = C.actionsPerTurn - actionsLeft + 1;
   show(`${guide(T('第 {0} 件事（還剩 {1} 件）：點一張卡片', nth, actionsLeft))}
     <div class="grid">
-      ${open.map(d => { const def = C.drawer.find(x => x.id === d.id), mine = isMine(C, G, d.id); return `<button class="topic ${d.fresh ? 'new' : ''} ${d.own ? 'own' : ''} ${mine ? 'mine' : ''}" data-d="${d.id}"><span class="ic">${d.own ? '🧾' : '🗄️'}</span><b>${def.title}</b><small>${mine ? T('✋ 你分管') : T('別人分管')}・${SIZE(d.size)}${d.known ? '' : '？'}${d.shelved >= 2 ? ' ⚠️' : ''}</small></button>`; }).join('')}
+      ${open.map(d => { const def = C.drawer.find(x => x.id === d.id), mine = isMine(C, G, d.id); return `<button class="topic ${d.fresh ? 'new' : ''} ${d.own ? 'own' : ''} ${mine ? 'mine' : ''}" data-d="${d.id}"><span class="ic">${d.own ? '🧾' : '🗂️'}</span><b>${def.title}</b><small>${mine ? T('✋ 你分管') : T('別人分管')}・${SIZE(d.size)}${d.known ? '' : '？'}${d.shelved >= 2 ? ' ⚠️' : ''}</small></button>`; }).join('')}
       ${pls.map(p => { const def = C.pledges.find(x => x.id === p.id); return `<button class="topic pl" data-p="${p.id}"><span class="ic">${def.emoji}</span><b>${def.name}</b><small>${p.mine ? T('✋ 你分管・') : ''}${T('政見 {0}／{1}', p.step, C.pledgeSteps.length)}</small></button>`; }).join('')}
       <button class="topic rest" id="rest"><span class="ic">🛌</span><b>${T('請假一天')}</b><small>${T('壓力 −20、老闆信任 −2')}</small></button>
     </div>
-    <p class="muted center">${T('🗄️ 前任的爛攤子　🧾 你們自己的　📣 政見')}</p>
+    <p class="muted center">${T('🗂️ 前任的爛攤子　🧾 你們自己的　📣 政見')}</p>
     <button class="btn ghost" id="skip">${T('這次先開會（跳過）')}</button>`);
   app.querySelectorAll('[data-d]').forEach(b => b.onclick = () => drawerSheet(b.dataset.d));
   app.querySelectorAll('[data-p]').forEach(b => b.onclick = () => pledgeSheet(b.dataset.p));
@@ -323,7 +323,7 @@ function drawerSheet(id) {
   const d = G.drawer.find(x => x.id === id), def = C.drawer.find(x => x.id === id);
   d.fresh = false;
   const late = ruleShift(C, G), mine = isMine(C, G, id);
-  const head = `${d.own ? `<span class="tag">${T('🧾 你們自己的')}</span>` : `<span class="tag">${T('🗄️ 前任留下的')}</span>`}${mine ? `<span class="tag blue">${T('✋ 你分管')}</span>` : `<span class="tag">${T('別人分管：要市長拍板或找負責的副市長')}</span>`}${d.shelved >= 2 ? `<span class="tag red">${T('放了 {0} 回合，越來越大', d.shelved)}</span>` : ''}<h2>${def.title}</h2>`;
+  const head = `${d.own ? `<span class="tag">${T('🧾 你們自己的')}</span>` : `<span class="tag">${T('🗂️ 前任留下的')}</span>`}${mine ? `<span class="tag blue">${T('✋ 你分管')}</span>` : `<span class="tag">${T('別人分管：要市長拍板或找負責的副市長')}</span>`}${d.shelved >= 2 ? `<span class="tag red">${T('放了 {0} 回合，越來越大', d.shelved)}</span>` : ''}<h2>${def.title}</h2>`;
   const act = (a, choice) => () => {
     const r = useDrawer(C, G, id, a, choice);
     const c = choice != null ? def.choices[choice] : null;
@@ -368,11 +368,11 @@ function pledgeSheet(pid) {
     } }]);
 }
 
-// 做完一件事：顯示結果＋脆反應；挖出新東西時有抽屜演出
+// 做完一件事：顯示結果＋脆反應；挖出新東西時有卷宗演出
 function afterAction(msg, fx, mood, opened = []) {
   actionsLeft--;
   const more = actionsLeft > 0;
-  const reveal = opened.length ? `<div class="reveal">🗄️💥<b>${T('抽屜裡又掉出東西了！')}</b>${opened.map(x => `<div>「${C.drawer.find(d => d.id === x).title}」</div>`).join('')}</div>` : '';
+  const reveal = opened.length ? `<div class="reveal">🗂️💥<b>${T('卷宗底下又翻出東西了！')}</b>${opened.map(x => `<div>「${C.drawer.find(d => d.id === x).title}」</div>`).join('')}</div>` : '';
   opened.forEach(x => { const d = G.drawer.find(y => y.id === x); if (d) d.fresh = true; });
   show(`${guide(more ? T('看完按下面，做第 {0} 件事', C.actionsPerTurn - actionsLeft + 1) : T('這回合的事做完了，按下面'))}
     <div class="res">${msg}</div>${reveal}
@@ -534,7 +534,7 @@ function endingScreen() {
       <div class="card" style="text-align:left">
         <div>🏅 ${T('本局稱號：{0} {1}', ti.emoji, ti.name)}</div>
         <div>${tr.emoji} ${T('老闆的真面目：{0}', tr.name)}</div>
-        <div>🗄️ ${T('爛攤子收掉：{0}／{1} 份', t.drawer, t.total)}</div>
+        <div>🗂️ ${T('爛攤子收掉：{0}／{1} 份', t.drawer, t.total)}</div>
         <div>📣 ${T('政見兌現：{0}／{1} 張', t.pledges, G.pledges.length)}</div>
         <div>🫵 ${T('甩鍋給前任：{0} 次', G.blamed)}</div>
       </div>
