@@ -1,0 +1,682 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-cache">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>修城市（試玩版）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Huninn&display=swap" rel="stylesheet">
+<style>
+/* 配色、字型延續選戰篇 */
+:root { --paper: #faf8f5; --ink: #2a2a2a; --muted: #7a7a7a; --room: #2b2f36; --red: #d93636; --gold: #e0a526; --green: #2e9e6a; --line: #e4e0da; --road: #d9d4cb; }
+@font-face { font-family: 'ColorEmoji'; src: local('Apple Color Emoji'), local('Segoe UI Emoji'), local('Noto Color Emoji'); unicode-range: U+1F000-1FAFF, U+2600-27BF, U+2B00-2BFF, U+FE0F; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; background: #1d2026; color: var(--ink); font-family: 'ColorEmoji', 'Huninn', 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif; }
+#app { max-width: 480px; margin: 0 auto; min-height: 100vh; background: var(--paper); padding: 10px 12px 90px; position: relative; }
+button { font-family: inherit; cursor: pointer; }
+h1 { text-align: center; margin: 24px 0 4px; font-size: 30px; }
+h2 { margin: 6px 0; font-size: 20px; }
+h3 { margin: 12px 0 4px; font-size: 15px; }
+.muted { color: var(--muted); font-size: 13px; }
+.center { text-align: center; }
+.btn { display: block; width: 100%; border: 0; border-radius: 999px; padding: 14px; margin: 10px 0; font-size: 17px; font-weight: 700; background: var(--room); color: #fff; }
+.btn.ghost { background: transparent; color: var(--ink); border: 2px solid var(--room); }
+.btn.tgt { box-shadow: 0 0 0 4px var(--gold); }
+.btn:disabled { opacity: .4; }
+.card { background: #fff; border: 2px solid var(--line); border-radius: 16px; padding: 12px; margin: 10px 0; }
+.face { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; background: #f3e6d0; }
+.face.s { width: 34px; height: 34px; }
+/* 頂部：四個大指標 */
+.top { position: sticky; top: 0; z-index: 5; background: var(--paper); padding: 4px 0 6px; }
+.row { display: flex; align-items: center; gap: 8px; }
+.month { font-weight: 800; font-size: 16px; }
+.ap { margin-left: auto; font-size: 18px; letter-spacing: 2px; }
+.bars { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 4px; }
+.bar { font-size: 12px; white-space: nowrap; }
+.bar i { display: block; height: 7px; border-radius: 4px; background: #eee; overflow: hidden; margin-top: 2px; }
+.bar i b { display: block; height: 100%; }
+.hint { background: var(--room); color: #fff; border-radius: 10px; padding: 7px 10px; font-size: 13px; font-weight: 700; margin-top: 6px; }
+.hint.tut { background: var(--gold); color: #2a2a2a; animation: bob 1.2s infinite; }
+@keyframes bob { 50% { transform: translateY(-2px); } }
+/* N 城地圖：城市街廓＋道路（不是島嶼） */
+.map { background: var(--road); border-radius: 18px; padding: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; position: relative; }
+.map::before { content: ''; position: absolute; left: 50%; top: 6px; bottom: 6px; width: 4px; margin-left: -2px; background: repeating-linear-gradient(#fff 0 8px, transparent 8px 16px); opacity: .7; }
+.dist { border-radius: 14px; padding: 6px; min-height: 104px; position: relative; transition: background .6s, filter .6s; }
+.dn { display: block; width: 100%; text-align: left; border: 0; background: rgba(255,255,255,.55); border-radius: 8px; padding: 3px 6px; font-size: 12px; font-weight: 700; margin-bottom: 4px; color: var(--ink); }
+.dn small { font-weight: 400; color: var(--muted); margin-left: 2px; }
+.dn.tgt { box-shadow: 0 0 0 3px var(--gold); animation: bob 1s infinite; }
+.moods { display: flex; gap: 3px; font-size: 11px; margin-top: 2px; }
+.moods span { display: inline-flex; align-items: center; }
+.dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-left: 1px; }
+.dot.g { background: var(--green); } .dot.y { background: var(--gold); } .dot.r { background: var(--red); }
+.sites { display: flex; flex-wrap: wrap; gap: 5px; }
+.site { position: relative; width: 62px; border: 2px solid rgba(0,0,0,.08); border-radius: 12px; background: rgba(255,255,255,.75); padding: 3px 2px; text-align: center; font-size: 24px; line-height: 1.1; }
+.site small { display: block; font-size: 9px; color: #555; line-height: 1.15; margin-top: 2px; }
+.site.broken { filter: grayscale(.85) contrast(.9); background: rgba(255,255,255,.5); }
+.site.broken::after { content: '🚧'; position: absolute; right: -4px; top: -6px; font-size: 14px; filter: none; }
+.site.rot { filter: grayscale(1) brightness(.85); }
+.site.rot::after { content: '💢'; }
+.site.work { background: #fff6df; border-color: var(--gold); }
+.site.work::after { content: '🏗️'; position: absolute; right: -4px; top: -6px; font-size: 14px; }
+.site.stuck::after { content: '⛔'; position: absolute; right: -4px; top: -6px; font-size: 14px; }
+.site.great { background: #e3f6ea; border-color: var(--green); animation: shine 1.2s; }
+.site.great::after { content: '✨'; position: absolute; right: -4px; top: -6px; font-size: 14px; }
+.site.late { background: #e8f2ea; border-color: #7cb894; }
+.site.late::after { content: '🐢'; position: absolute; right: -4px; top: -6px; font-size: 14px; }
+.site.flawed { background: #f6efe0; border-color: #c9b38a; }
+.site.flawed::after { content: '🔧'; position: absolute; right: -4px; top: -6px; font-size: 14px; }
+.site.tgt { box-shadow: 0 0 0 4px var(--gold); animation: bob 1s infinite; }
+.prog { height: 4px; background: #eee; border-radius: 2px; margin-top: 2px; overflow: hidden; }
+.prog b { display: block; height: 100%; background: var(--gold); }
+@keyframes shine { 0% { transform: scale(.8); } 60% { transform: scale(1.12); } 100% { transform: scale(1); } }
+/* 底部 */
+.dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: #fff; border-top: 2px solid var(--line); padding: 8px 12px calc(10px + env(safe-area-inset-bottom)); }
+.dock .in { max-width: 456px; margin: 0 auto; display: flex; gap: 8px; align-items: center; }
+.team { display: flex; gap: 2px; flex: 1; overflow-x: auto; }
+.mem { text-align: center; font-size: 9px; width: 42px; flex: none; border: 0; background: none; padding: 0; color: var(--ink); }
+.mem img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 2px solid transparent; }
+.mem.busy img { border-color: var(--gold); }
+.mem.off img { opacity: .35; }
+.endm { flex: none; border: 0; border-radius: 999px; background: var(--red); color: #fff; font-weight: 700; padding: 12px 14px; font-size: 14px; }
+.endm.tgt { box-shadow: 0 0 0 4px var(--gold); }
+/* 彈出 */
+.sheet { position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,.45); display: flex; align-items: flex-end; justify-content: center; }
+.sheet .box { background: var(--paper); width: 100%; max-width: 480px; border-radius: 20px 20px 0 0; padding: 14px 14px calc(18px + env(safe-area-inset-bottom)); max-height: 85vh; overflow-y: auto; animation: up .25s; }
+@keyframes up { from { transform: translateY(40px); opacity: 0; } }
+.opt { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; border: 2px solid var(--line); background: #fff; border-radius: 14px; padding: 10px 12px; margin: 7px 0; font-size: 15px; color: var(--ink); }
+.opt small { display: block; font-size: 12px; color: var(--muted); }
+.opt:disabled { opacity: .45; }
+.opt.tgt { border-color: var(--gold); box-shadow: 0 0 0 3px #ffe39b; }
+.opt.gray { border-style: dashed; }
+.opt.on { border-color: var(--green); background: #eef8f1; }
+.say { background: #fff; border-radius: 14px; padding: 10px 12px; margin: 8px 0; border-left: 4px solid var(--gold); font-size: 14px; line-height: 1.55; }
+.eff { font-size: 12px; color: #555; background: #f4f1ec; border-radius: 8px; padding: 5px 8px; margin: 4px 0; line-height: 1.6; }
+.eff b { color: var(--ink); }
+.up { color: var(--green); font-weight: 700; } .down { color: var(--red); font-weight: 700; }
+.grp { display: grid; grid-template-columns: 74px 1fr 34px 44px; align-items: center; gap: 6px; font-size: 13px; padding: 4px 0; border-bottom: 1px dashed #eee; }
+.grp i { display: block; height: 8px; border-radius: 4px; background: #eee; overflow: hidden; }
+.grp i b { display: block; height: 100%; }
+.post { border-top: 1px solid #eee; padding: 6px 0; font-size: 14px; }
+.post b { font-size: 12px; color: #6b5a33; display: block; }
+.news div { font-size: 14px; padding: 4px 0; border-bottom: 1px dashed #eee; }
+.who div { font-size: 13px; padding: 3px 0; }
+.toast { position: fixed; left: 50%; top: 70px; transform: translateX(-50%); background: var(--room); color: #fff; padding: 9px 14px; border-radius: 12px; font-size: 13px; z-index: 30; max-width: 92vw; animation: fade 3s forwards; }
+@keyframes fade { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
+.legend { font-size: 12px; line-height: 1.8; } .legend span { white-space: nowrap; margin: 0 4px; }
+.ending { text-align: center; }
+.ending .big { font-size: 64px; }
+.tri { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 10px 0; }
+.tri div { background: #fff; border: 2px solid var(--line); border-radius: 12px; padding: 8px 4px; font-size: 12px; }
+.tri b { display: block; font-size: 20px; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+// ==========================================================
+// 修城市（試玩版 0.3）— 你是剛選上的 N 城市長。百廢待舉。
+// 每季只能做 3 件事。同一件事，有人開心、有人不爽；成果有好有壞，而且會晚一點才看到。
+// 摩卡與貓貓小隊
+// ==========================================================
+const $ = s => document.querySelector(s), app = $('#app');
+const rnd = n => Math.floor(Math.random() * n), pick = a => a[rnd(a.length)], shuffle = a => a.slice().sort(() => Math.random() - .5);
+const TURNS = 16, AP = 3;
+const SPEC = { eng: '工程', fin: '財務', cou: '議會', soc: '社福', tra: '交通', med: '媒體' };
+const label = t => `第 ${Math.ceil(t / 4)} 年・${['1～3', '4～6', '7～9', '10～12'][(t - 1) % 4]} 月`;
+const clamp = v => Math.max(0, Math.min(100, v));
+
+// ---------- 每一區都有四種人（加上一位議員）----------
+const GROUPS = { res: ['🏠', '居民'], shop: ['🏪', '店家'], com: ['🚇', '通勤族'], chief: ['🧓', '里長'] };
+const GW = { res: .35, shop: .2, com: .25, chief: .2 };
+
+// ---------- N 城地圖：六個區 ----------
+const DISTRICTS = [
+  { id: 'old', n: '舊城區', c: '#f4d9b8' }, { id: 'river', n: '河濱區', c: '#cfe4f2' },
+  { id: 'tech', n: '科技園區', c: '#dcd6f2' }, { id: 'east', n: '東區商圈', c: '#f6d3d9' },
+  { id: 'hill', n: '山邊住宅區', c: '#d6ecd2' }, { id: 'port', n: '港灣區', c: '#d2ecec' }
+];
+const dName = id => DISTRICTS.find(d => d.id === id).n;
+// 壞掉的地方。during：施工期間每季對這一區的影響；after：完工後的影響（分三季慢慢出現）；city*：全市
+// maint：完工後每季維護費；income：完工後每季多的稅收
+const SITES = [
+  { id: 'park', d: 'old', b: '🗑️', f: '🌳', bn: '髒亂的公園', fn: '共融公園', need: 'eng', dur: 2, cost: 6, obs: ['protest', 'tender'], tut: 1, during: { res: -2 }, after: { res: 9, chief: 6, shop: 3 } },
+  { id: 'market', d: 'old', b: '🏚️', f: '🥬', bn: '漏水的老市場', fn: '新的傳統市場', need: 'soc', dur: 3, cost: 10, obs: ['protest', 'council', 'vendor'], during: { shop: -5, res: -1 }, after: { shop: 11, res: 6, chief: 4 } },
+  { id: 'pole', d: 'old', b: '🪵', f: '🚶', bn: '人行道上的廢電線桿', fn: '暢通的人行道', need: 'eng', dur: 2, cost: 3, obs: ['kick', 'protest'], during: { com: -1 }, after: { res: 5, com: 5, chief: 4 } },
+  { id: 'bike', d: 'river', b: '🚧', f: '🚲', bn: '斷掉的河濱自行車道', fn: '串起來的自行車道', need: 'tra', dur: 3, cost: 8, obs: ['tender', 'central'], during: { com: -1 }, after: { com: 8, res: 5 } },
+  { id: 'sky', d: 'river', b: '🌁', f: '🌉', bn: '沒人去的天空步道', fn: '夜間燈光步道', need: 'eng', dur: 3, cost: 9, obs: ['vendorRun', 'council'], during: { res: -2 }, after: { shop: 9, res: 2 }, maint: 1 },
+  { id: 'lamp', d: 'river', b: '💡', f: '🌟', bn: '暗暗的路燈（十年合約）', fn: '亮起來的路燈', need: 'fin', dur: 2, cost: 8, obs: ['contract'], during: {}, after: { res: 7, com: 4, chief: 4 } },
+  { id: 'metro', d: 'tech', b: '🚇', f: '🚄', bn: '延期的捷運延伸線', fn: '捷運延伸線', need: 'tra', dur: 5, cost: 18, obs: ['central', 'tender', 'council'], during: { com: -4, shop: -4, res: -2 }, cityDuring: { com: -1 }, after: { com: 10, shop: 8, res: 6 }, cityAfter: { com: 4 },
+    tiers: ['🚄 如期通車，月台擠滿人', '🐢 延期了，但終於通車', '🔧 通車了，但三天兩頭故障'], afterNews: '🏠 捷運站周邊房價漲了一成，屋主開心，租屋族在脆上哀號。' },
+  { id: 'land', d: 'tech', b: '📜', f: '🏢', bn: '綁住的地上權', fn: '大廠進駐', need: 'fin', dur: 3, cost: 14, obs: ['contract', 'council'], during: {}, after: { shop: 10, res: 3, com: -4 }, income: 2, afterNews: '🚗 大廠上下班時間，園區聯外道路塞成停車場。' },
+  { id: 'dome', d: 'east', b: '🏗️', f: '🏟️', bn: '蓋一半的巨型場館', fn: '巨型場館', need: 'fin', dur: 5, cost: 20, obs: ['contract', 'vendorRun', 'council'], hard: 1, during: { com: -3, res: -2 }, after: { shop: 10, com: -2 }, maint: 2,
+    tiers: ['🏟️ 完工啟用，第一場就爆滿', '🐢 延了又延，總算啟用', '🔧 啟用了，但草皮和音響一直被罵'], afterNews: '🎤 場館可以辦大型演唱會了（點「東區商圈」）。每季維護費也開始算了。' },
+  { id: 'cross', d: 'east', b: '🚦', f: '🛣️', bn: '塞爆的路口', fn: '順暢的路口', need: 'tra', dur: 2, cost: 5, obs: ['protest', 'director'], during: { com: -3, shop: -2 }, after: { com: 10, shop: 3 } },
+  { id: 'scooter', d: 'east', b: '🛵', f: '🚸', bn: '被機車佔滿的騎樓', fn: '走得過的騎樓', need: 'cou', dur: 2, cost: 2, obs: ['protest', 'council'], during: { shop: -2 }, after: { res: 6, com: 4, shop: -4, chief: -2 }, afterNews: '🛵 騎樓淨空了，但店家抱怨客人沒地方停機車。' },
+  { id: 'housing', d: 'hill', b: '🏚️', f: '🏘️', bn: '危老公寓', fn: '新的社會住宅', need: 'soc', dur: 4, cost: 16, obs: ['protest', 'council', 'tender'], during: { res: -3, chief: -1 }, after: { res: 11, shop: 3, chief: 2 } },
+  { id: 'elder', d: 'hill', b: '🧓', f: '🏡', bn: '沒有長照據點的社區', fn: '長照據點', need: 'soc', dur: 2, cost: 6, obs: ['director', 'council'], during: {}, after: { res: 8, chief: 7 } },
+  { id: 'lunch', d: 'hill', b: '🍱', f: '🍎', bn: '流標的營養午餐', fn: '每校都有熱騰騰的午餐', need: 'soc', dur: 2, cost: 7, obs: ['tender', 'central'], during: {}, after: { res: 9, chief: 3 } },
+  { id: 'stadium', d: 'port', b: '🏟️', f: '🏆', bn: '一啟用就積水的體育場', fn: '辦得了國際賽的體育場', need: 'eng', dur: 3, cost: 10, obs: ['vendorRun', 'contract'], during: { res: -1 }, after: { shop: 7, res: 3 }, maint: 1, afterNews: '🎤 體育場可以辦大型演唱會了（點「港灣區」）。' },
+  { id: 'museum', d: 'port', b: '🏛️', f: '🎨', bn: '只剩冷氣在上班的紀念館', fn: '熱鬧的青年基地', need: 'med', dur: 2, cost: 7, obs: ['council', 'protest'], during: {}, after: { shop: 5, res: 4 } }
+];
+const TIER_DEF = ['✨ 如期完工，品質很好', '🐢 延期了，但完成了', '🔧 完成了，但問題不斷'];
+const TIER_MULT = { great: 1, late: .8, flawed: .45 };
+// 阻礙：每種有兩個解法（一定要花一件事）或先放著
+const OBS = {
+  council: { e: '🏛️', t: '議會不給錢', a: [['去議會協商', { budget: -2 }, 'cou'], ['答應議員的地方建設換預算', { budget: -6, gray: 1 }]] },
+  tender: { e: '📭', t: '招標流標，沒有廠商來', a: [['提高預算重新招標', { budget: -4 }, 'fin'], ['放寬資格再招一次', { rush: 1 }]] },
+  vendorRun: { e: '🏃', t: '得標廠商跑掉了', a: [['解約、重新發包', { budget: -5 }, 'fin'], ['找認識的廠商直接接手', { gray: 1, rush: 1 }]] },
+  contract: { e: '📜', t: '被前任簽的合約綁住', a: [['付錢提前解約', { budget: -8 }, 'fin'], ['跟廠商重新談', {}, 'cou']] },
+  protest: { e: '📢', t: '附近居民和攤商抗議', a: [['開說明會好好溝通', { d: { res: 2, chief: 2 } }, 'soc'], ['先動工再說', { d: { res: -5, chief: -4 }, rush: 1 }]] },
+  director: { e: '🙅', t: '局長不配合', a: [['找局長好好談', {}, 'cou'], ['換一位局長', { all: -2, swap: 1 }]] },
+  central: { e: '🏢', t: '要等中央核定', a: [['去中央跑公文', {}, 'cou'], ['先自己出錢', { budget: -8 }]] },
+  kick: { e: '⚽', t: '五個單位互踢皮球', a: [['把大家叫來當面喬', {}, 'cou'], ['叫工務局先拆再說', { d: { res: 2 }, gray: 1 }]] },
+  vendor: { e: '🧾', t: '攤商自治會有意見', a: [['一攤一攤去拜訪', { d: { shop: 2 } }, 'soc'], ['給自治會長一點好處', { gray: 1 }]] }
+};
+// 政策：不用派人，花一件事。同一件事對不同的人有加有減，結果有好有壞
+const POLICIES = [
+  { id: 'demo', e: '🏚️', n: '拆除違建', ds: ['old', 'hill', 'port'], cost: 2, eff: { res: 6, chief: -7, shop: -2 }, coun: { favor: -15, watch: 8, show: 2, deal: -6 },
+    say: '巷子裡的頂樓加蓋、鐵皮屋、佔用防火巷的倉庫……有些已經十幾年，有些是里長的親戚。',
+    outs: [['順利拆完，巷子寬了，消防車進得來', 1], ['拆到一半被告上法院，案子拖著', .5, { budget: -3 }], ['拆完沒多久，又長回來了', .3]] },
+  { id: 'stall', e: '🛒', n: '整頓佔道攤販', ds: ['old', 'east'], cost: 1, eff: { res: 6, com: 4, shop: -7, chief: -5 }, coun: { favor: -12, watch: 6, show: -4, deal: -6 },
+    say: '人行道被攤販佔滿，推嬰兒車只能走馬路。但有些攤子擺了三十年，攤商說「我們也要生活」。',
+    outs: [['人行道走得過了，攤商移進合法攤區', 1], ['攤販打游擊，今天趕走明天回來', .5], ['攤商自救會抗議上了新聞', .6, { all: -2 }]] },
+  { id: 'redline', e: '🚫', n: '紅線違停嚴格取締', ds: ['tech', 'east', 'hill'], cost: 0, eff: { com: 7, res: 2, shop: -6, chief: -4 }, coun: { favor: -8, watch: 4, show: -6, deal: -4 },
+    say: '路口違停讓公車進不了站。但店家說，客人停一下就被開單，生意怎麼做？',
+    outs: [['公車準點了，路口順了', 1], ['開單開到民怨，議員幫店家喊冤', .5, { all: -1 }], ['取締兩週就鬆了，又回到原樣', .3]] },
+  { id: 'ubike', e: '🚲', n: '廣設公共自行車站', ds: ['river', 'tech', 'old'], cost: 3, eff: { com: 6, res: 3, shop: -2 }, coun: { favor: 0, watch: 4, show: 6, deal: 2 },
+    say: '通勤族一直敲碗。但車站要佔掉一些汽機車格，店家門口的停車位會變少。',
+    outs: [['一個月就有人天天騎', 1], ['熱門站永遠沒車、冷門站停滿', .6], ['車被亂停、被丟進河裡，上了新聞', .4, { all: -1 }]] },
+  { id: 'concert', e: '🎤', n: '辦大型演唱會', ds: ['east', 'port'], req: { east: 'dome', port: 'stadium' }, cost: 4, again: 4, eff: { shop: 10, res: -6, com: -5 }, later: 7, coun: { favor: 4, watch: -2, show: 8, deal: 4 },
+    say: '觀光客和周邊店家都等著。附近居民已經在問：噪音到幾點？散場交通誰負責？',
+    outs: [['爆滿，散場也順，周邊店家笑開懷', 1], ['爆滿，但散場交通大打結，排車排到半夜', 1, { com: -6, res: -2 }], ['票賣不好，贊助商臉很臭', .4, { budget: -4 }]] }
+];
+// 議員：同一位可以這次幫你、下次擋你（看他對你的態度和他是哪種人）
+const CTYPE = { watch: '認真監督', favor: '會來關說', show: '只想上新聞', deal: '喜歡交換' };
+const CNAMES = ['方議員', '江議員', '何議員', '高議員', '杜議員', '余議員'];
+
+// ---------- 團隊：三位副市長＋三位局長（選戰篇的畫風）；個性用了才知道 ----------
+const ROSTER = [
+  { n: '周副市長', img: 'npc_councilor', sp: 'cou' }, { n: '林副市長', img: 'npc_director', sp: 'fin' }, { n: '陳副市長', img: 'npc_volunteer', sp: 'soc' },
+  { n: '工務局長', img: 'npc_staff', sp: 'eng' }, { n: '交通局長', img: 'npc_foreign', sp: 'tra' }, { n: '新聞處長', img: 'npc_reporter', sp: 'med' }
+];
+const SPARE = [ { n: '資深文官', img: 'npc_elder', sp: 'cou' }, { n: '學者局長', img: 'npc_pundit', sp: 'fin' }, { n: '新來的局長', img: 'npc_intern', sp: 'eng' }, { n: '鄰市來的局長', img: 'npc_shady', sp: 'tra' }, { n: '社工出身的局長', img: 'npc_chief', sp: 'soc' }, { n: '前記者', img: 'npc_donor', sp: 'med' } ];
+const PERS = {
+  good: { w: 34, n: '靠得住' },
+  pro: { w: 14, n: '超能幹', line: '「這個我上週就順手處理好了。」' },
+  credit: { w: 13, n: '很會搶功', line: '剪綵時站到你前面：「這是我一手推動的。」' },
+  blame: { w: 13, n: '很會推責任', line: '「這是市長交辦不清楚，不是我們局處的問題。」' },
+  image: { w: 13, n: '只想拍影片', line: '拍了一支工地巡視短片，工地其實沒動。' },
+  vendor: { w: 13, n: '跟廠商很熟', line: '被拍到跟得標廠商吃飯：「只是老朋友啦。」' }
+};
+const pickP = () => { let x = Math.random() * 100; for (const [k, p] of Object.entries(PERS)) { x -= p.w; if (x < 0) return k; } return 'good'; };
+const mk = (b, i) => ({ ...b, id: 'm' + i + rnd(1e6), per: pickP(), known: false, busy: null, off: 0 });
+
+// ---------- 狀態 ----------
+let S;
+function newGame(tut) {
+  const g = rnd(2) ? 'm' : 'f', L = 'ABCDEF'[rnd(6)];
+  const others = shuffle('ABCDEF'.replace(L, '').split('')), types = shuffle(['watch', 'favor', 'show', 'deal', pick(['watch', 'favor', 'show', 'deal']), pick(['watch', 'show', 'deal'])]);
+  S = { t: 1, ap: AP, budget: 60, pocket: 0, heat: 0, caught: false, team: ROSTER.map(mk),
+    sites: SITES.map(s => ({ ...s, st: 'broken', prog: 0, age: 0, idle: 0, by: null, ob: null, obAge: 0, obHard: 0, bribe: false, favor: 0, rush: 0, stuckLong: 0, surface: 0, tier: null })),
+    dist: {}, coun: DISTRICTS.map((d, i) => ({ d: d.id, n: CNAMES[i], img: `art/${others[i % 5]}_${rnd(2) ? 'm' : 'f'}_`, type: types[i], att: 45 + rnd(11), known: false })),
+    lag: [], promise: [], pol: {}, visit: null, partyUsed: [], news: [], tut: tut ? 1 : 0, face: `art/${L}_${g}_`, fixedCount: 0, done: [] };
+  DISTRICTS.forEach(d => S.dist[d.id] = { res: 42 + rnd(14), shop: 42 + rnd(14), com: 40 + rnd(14), chief: 44 + rnd(12) });
+  if (tut) { S.team.find(m => m.sp === 'eng').per = 'good'; }
+  snap();
+}
+const snap = () => { S.snap = JSON.parse(JSON.stringify(S.dist)); };
+const site = id => S.sites.find(s => s.id === id), mem = id => S.team.find(m => m.id === id), counOf = d => S.coun.find(c => c.d === d);
+const popOf = d => Object.keys(GW).reduce((a, k) => a + S.dist[d][k] * GW[k], 0);
+const pop = () => DISTRICTS.reduce((a, d) => a + popOf(d.id), 0) / DISTRICTS.length;
+const council = () => S.coun.reduce((a, c) => a + c.att, 0) / S.coun.length;
+const isDone = s => ['great', 'late', 'flawed'].includes(s.st);
+const cityPct = () => Math.round(S.sites.reduce((a, s) => a + (s.st === 'great' || s.st === 'late' ? 1 : s.st === 'flawed' ? .6 : 0), 0) / S.sites.length * 100);
+// 套用影響：d 可以是區域 id 或 'all'
+function applyG(d, eff, mult = 1) {
+  if (!eff) return;
+  for (const id of d === 'all' ? Object.keys(S.dist) : [d]) for (const k of Object.keys(GROUPS)) if (eff[k]) S.dist[id][k] = clamp(S.dist[id][k] + eff[k] * mult);
+}
+const allG = n => applyG('all', { res: n, shop: n, com: n, chief: n });
+const cAtt = (c, n) => { c.att = clamp(c.att + n); };
+function fx(o) { if (o.budget) S.budget = clamp(S.budget + o.budget); if (o.pocket) S.pocket += o.pocket; if (o.all) allG(o.all); }
+// 「🏠+6 🧓−7」：玩家一眼看到誰開心誰不爽
+const effStr = (eff, mult = 1) => Object.keys(GROUPS).filter(k => eff && eff[k]).map(k => { const v = Math.round(eff[k] * mult); return `<span class="${v > 0 ? 'up' : 'down'}">${GROUPS[k][0]}${v > 0 ? '+' : '−'}${Math.abs(v)}</span>`; }).join(' ');
+const moodCls = v => v >= 55 ? 'g' : v >= 38 ? 'y' : 'r';
+const moodFace = v => v >= 55 ? '😊' : v >= 38 ? '😐' : '😠';
+function reveal(m) { if (m.known) return ''; m.known = true; return m.per === 'good' ? '' : `😳 ${m.n}：${PERS[m.per].line}<br><small>原來他是「${PERS[m.per].n}」的人。</small>`; }
+
+// ---------- 教學（第一季）----------
+const TUT = {
+  1: { hint: '👉 點地圖上閃爍的「髒亂的公園」', tgt: 'site:park' },
+  2: { hint: '👉 選工務局長（⚡專長是工程）', tgt: 'mem-eng' },
+  3: { hint: '👉 選「正常發包」開工', tgt: 'opt:0' },
+  4: { hint: '👉 這一季還能做 2 件事，先按右下角「下一季」看看', tgt: 'end' },
+  5: { hint: '👉 工地冒出阻礙了！點公園處理它', tgt: 'site:park' },
+  6: { hint: '👉 選一個解法（每個解法都要花一件事）', tgt: 'opt:0' },
+  7: { hint: '👉 按「下一季」，看公園完工', tgt: 'end' },
+  9: { hint: '👉 點「舊城區」，看看誰開心、誰不爽', tgt: 'dist:old' }
+};
+const tutHint = () => S.tut && TUT[S.tut] ? TUT[S.tut] : null;
+const tutLock = () => S.tut && S.tut < 9;
+
+// ---------- 主畫面：地圖 ----------
+function bars() {
+  const one = (n, v, c) => `<div class="bar">${n} ${Math.round(v)}<i><b style="width:${v}%;background:${c || (v < 30 ? 'var(--red)' : v < 45 ? 'var(--gold)' : 'var(--green)')}"></b></i></div>`;
+  return `<div class="bars">${one('😊民意', pop())}${one('💰財政', S.budget)}${one('🏙️城市', cityPct(), '#5b8bd9')}${one('🏛️議會', council())}</div>${S.pocket ? `<div class="muted" style="margin-top:3px">🤫 你的口袋：${S.pocket}　${S.heat >= 6 ? '<b style="color:var(--red)">有人在查你了</b>' : ''}</div>` : ''}`;
+}
+function home() {
+  const h = tutHint(), tgt = h && h.tgt;
+  app.innerHTML = `<div class="top"><div class="row"><img class="face s" src="${S.face}smile.webp" alt=""><span class="month">${label(S.t)}</span><span class="ap">${'🟡'.repeat(S.ap)}${'⚪'.repeat(AP - S.ap)}</span></div>${bars()}
+    <div class="hint ${h ? 'tut' : ''}">${h ? h.hint : S.ap ? `👉 點工地開工，點區域名稱看那裡的人、推政策。這一季還能做 ${S.ap} 件事` : '👉 這一季的事做完了，按「下一季」'}</div></div>
+    <div class="map">${DISTRICTS.map(d => { const ss = S.sites.filter(s => s.d === d.id), ok = ss.filter(isDone).length / ss.length, g = S.dist[d.id], c = counOf(d.id);
+      return `<div class="dist" style="background:${d.c};filter:saturate(${0.3 + ok * 0.85})"><button class="dn ${tgt === 'dist:' + d.id ? 'tgt' : ''}" data-d="${d.id}">${d.n} ›<small>${Math.round(ok * 100)}%</small><div class="moods">${Object.keys(GROUPS).map(k => `<span>${GROUPS[k][0]}<b class="dot ${moodCls(g[k])}"></b></span>`).join('')}<span>🎤<b class="dot ${moodCls(c.att)}"></b></span></div></button><div class="sites">${ss.map(siteChip).join('')}</div></div>`; }).join('')}</div>
+    <p class="muted center legend"><span>🚧壞掉</span><span>🏗️施工</span><span>⛔卡住</span><span>✨修好</span><span>🐢延期</span><span>🔧常出包</span><span>💢越來越爛</span><br><span>🏠居民</span><span>🏪店家</span><span>🚇通勤族</span><span>🧓里長</span><span>🎤議員</span><br><span><b class="dot g"></b>開心</span><span><b class="dot y"></b>普通</span><span><b class="dot r"></b>不爽</span></p>
+    <div class="dock"><div class="in"><div class="team">${S.team.map(m => `<button class="mem ${m.busy ? 'busy' : ''} ${m.off ? 'off' : ''}" data-m="${m.id}"><img src="art/${m.img}.webp" alt=""><br>${m.n.replace('副市長', '副')}</button>`).join('')}</div><button class="endm ${tgt === 'end' ? 'tgt' : ''}" id="end">下一季 →</button></div></div>`;
+  document.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { if (S.tut && tgt !== 'site:' + b.dataset.s) return; openSite(b.dataset.s); });
+  document.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { if (S.tut && tgt !== 'dist:' + b.dataset.d) return; openDistrict(b.dataset.d); });
+  document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { if (S.tut) return; openMember(b.dataset.m); });
+  $('#end').onclick = () => { if (S.tut && tgt !== 'end') return; endMonth(); };
+  if (S.visit && !S.tut) showVisit();
+}
+function siteChip(s) {
+  const tgt = tutHint() && tutHint().tgt === 'site:' + s.id;
+  const rot = s.st === 'broken' && s.idle >= 6;
+  const cls = s.st === 'work' ? (s.ob ? 'work stuck' : 'work') : s.st === 'broken' ? (rot ? 'broken rot' : 'broken') : s.st;
+  return `<button class="site ${cls} ${tgt ? 'tgt' : ''}" data-s="${s.id}">${isDone(s) ? s.f : s.b}<small>${isDone(s) ? s.fn : s.bn}</small>${s.st === 'work' ? `<div class="prog"><b style="width:${s.prog / s.dur * 100}%"></b></div>` : ''}</button>`;
+}
+
+// ---------- 彈出 ----------
+function sheet(html, after, lock) {
+  const d = document.createElement('div'); d.className = 'sheet'; d.innerHTML = `<div class="box">${html}</div>`;
+  d.onclick = e => { if (e.target === d && !tutLock() && !lock) d.remove(); };
+  document.body.appendChild(d); if (after) after(d); return d;
+}
+const closeSheets = () => document.querySelectorAll('.sheet').forEach(x => x.remove());
+
+// ---------- 區域：誰開心誰不爽、議員、政策 ----------
+function openDistrict(id) {
+  const d = DISTRICTS.find(x => x.id === id), g = S.dist[id], s0 = S.snap[id], c = counOf(id), ss = S.sites.filter(s => s.d === id);
+  const tut = S.tut === 9;
+  if (tut) S.tut = 10;
+  const pols = POLICIES.filter(p => p.ds.includes(id));
+  const row = (icon, n, v, dv) => `<div class="grp"><span>${icon} ${n}</span><i><b style="width:${v}%;background:var(--${moodCls(v) === 'g' ? 'green' : moodCls(v) === 'y' ? 'gold' : 'red'})"></b></i><span>${moodFace(v)}${Math.round(v)}</span><span class="${dv > 0 ? 'up' : dv < 0 ? 'down' : 'muted'}">${dv ? (dv > 0 ? '+' : '−') + Math.abs(dv) : '—'}</span></div>`;
+  sheet(`<h2>${d.n}</h2><div class="muted">修好 ${ss.filter(isDone).length}/${ss.length}・最右邊是這一季的變化</div>
+    ${tut ? '<div class="hint tut">✨ 公園修好，居民和里長開心了。之後每件事都會有人開心、有人不爽，而且成果要慢慢才出來。教學結束，交給你了！</div>' : ''}
+    <div class="card" style="padding:6px 10px">${Object.keys(GROUPS).map(k => row(GROUPS[k][0], GROUPS[k][1], g[k], Math.round(g[k] - s0[k]))).join('')}</div>
+    <div class="card row"><img class="face s" src="${c.img}${c.att >= 60 ? 'smile' : c.att <= 35 ? 'sad' : 'flat'}.webp" alt=""><div style="flex:1"><b>🎤 ${c.n}</b>　<span class="muted">${c.known ? '「' + CTYPE[c.type] + '」的議員' : '還看不出是哪種議員'}</span><div class="grp" style="grid-template-columns:70px 1fr 34px;border:0"><span class="muted">對你的態度</span><i><b style="width:${c.att}%;background:var(--${moodCls(c.att) === 'g' ? 'green' : moodCls(c.att) === 'y' ? 'gold' : 'red'})"></b></i><span>${Math.round(c.att)}</span></div></div></div>
+    ${tut ? '' : `<h3>📋 可以推的政策（一件事）</h3>${pols.map(p => polBtn(p, id)).join('')}`}
+    <button class="btn ghost ${tut ? 'tgt' : ''}" id="x">${tut ? '知道了 →' : '關閉'}</button>`, x => {
+    x.querySelector('#x').onclick = () => { if (S.tut === 10) S.tut = 0; closeSheets(); home(); };
+    x.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { closeSheets(); doPolicy(POLICIES.find(p => p.id === b.dataset.p), id); });
+  });
+}
+function polBtn(p, d) {
+  const key = p.id + ':' + d, used = S.pol[key];
+  let why = '';
+  if (p.req && !isDone(site(p.req[d]))) why = `要先修好${site(p.req[d]).bn.replace(/^.*的/, '')}`;
+  else if (used && !p.again) why = '做過了';
+  else if (used && S.t - used < p.again) why = `${p.again - (S.t - used)} 季後才能再辦`;
+  else if (S.budget < p.cost) why = `財政不夠（要 ${p.cost}）`;
+  else if (!S.ap) why = '這一季的事做完了';
+  return `<button class="opt" data-p="${p.id}" ${why ? 'disabled' : ''}>${p.e}<span>${p.n}${p.cost ? `<small>財政 −${p.cost}</small>` : ''}<span class="eff" style="display:block">${effStr(p.eff)}${p.later ? '　💰之後 +' + p.later : ''}${why ? '　・' + why : ''}</span></span></button>`;
+}
+function doPolicy(p, d) {
+  S.ap--; fx({ budget: -p.cost }); S.pol[p.id + ':' + d] = S.t;
+  const c = counOf(d);
+  const w = c.att >= 60 ? [.6, .25, .15] : c.att <= 35 ? [.35, .35, .3] : [.5, .3, .2];
+  let x = Math.random(), i = 0; while (i < 2 && x > w[i]) { x -= w[i]; i++; }
+  const o = p.outs[i];
+  applyG(d, p.eff, o[1]); if (o[2]) { fx(o[2]); applyG(d, o[2]); }
+  if (p.later && i < 2) S.lag.push({ at: S.t + 1, budget: p.later, msg: `💰 ${dName(d)}演唱會的觀光收入進帳了。` });
+  cAtt(c, p.coun[c.type]);
+  let msg = `${p.e} ${dName(d)}${p.n}：${o[0]}。`;
+  const cr = p.coun[c.type] >= 5 ? `${c.n}公開支持。` : p.coun[c.type] <= -8 ? `${c.n}在議會拍桌：「市府不顧基層！」` : '';
+  if (cr) msg += cr;
+  S.news.push(msg + (c.known ? '' : `<br><small>${c.n}的反應，讓你覺得他是「${CTYPE[c.type]}」的人。</small>`));
+  c.known = true;
+  sheet(`<h2>${p.e} ${p.n}</h2><div class="say">${p.say}</div><div class="say"><b>${o[0]}。</b>${cr ? '<br>' + cr : ''}</div><div class="eff">${dName(d)}：${effStr(p.eff, o[1])} ${o[2] && o[2].budget ? `💰${o[2].budget}` : ''}</div><button class="btn" id="x">好</button>`, x => x.querySelector('#x').onclick = () => { closeSheets(); home(); });
+}
+
+// ---------- 點一個工地 ----------
+function openSite(id) {
+  if (S.tut === 1) S.tut = 2;
+  if (S.tut === 5) S.tut = 6;
+  const s = site(id), h = tutHint();
+  if (isDone(s)) return sheet(`<h2>${s.f} ${s.fn}</h2><div class="say">${(s.tiers || TIER_DEF)[['great', 'late', 'flawed'].indexOf(s.st)]}</div><div class="eff">對${dName(s.d)}：${effStr(s.after, TIER_MULT[s.st])}${s.maint ? '　💰維護費 −' + s.maint + '／季' : ''}${s.income ? '　💰稅收 +' + s.income + '／季' : ''}</div><button class="btn ghost" id="x">關閉</button>`, d => d.querySelector('#x').onclick = closeSheets);
+  if (!S.ap) return toast('這一季的事做完了，按「下一季」');
+  if (s.st === 'broken') {
+    const free = S.team.filter(m => !m.busy && !m.off);
+    return sheet(`<h2>${s.b} ${s.bn}</h2><div class="muted">${dName(s.d)}・大約 ${s.dur} 季・財政 −${s.cost}・最適合：${SPEC[s.need]}</div>
+      <div class="eff"><b>施工期間</b>每季：${effStr(s.during) || '沒什麼影響'}${s.cityDuring ? '（全市 ' + effStr(s.cityDuring) + '）' : ''}<br><b>完工後</b>：${effStr(s.after)}${s.cityAfter ? '（全市 ' + effStr(s.cityAfter) + '）' : ''}${s.maint ? '・💰維護費 −' + s.maint + '／季' : ''}${s.income ? '・💰稅收 +' + s.income + '／季' : ''}<br><span class="muted">成果好壞看派誰去、過程順不順，還有一點運氣。</span></div>
+      <p><b>派誰負責？</b></p>${free.map(m => `<button class="opt ${h && h.tgt === 'mem-eng' && m.sp === 'eng' ? 'tgt' : ''}" data-m="${m.id}"><img class="face s" src="art/${m.img}.webp" alt=""><span>${m.n} ${m.sp === s.need ? '⚡' : ''}<small>專長：${SPEC[m.sp]}${m.known && m.per !== 'good' ? '・' + PERS[m.per].n : ''}</small></span></button>`).join('') || '<div class="say">大家都有事在忙。</div>'}
+      ${S.tut ? '' : `<button class="opt gray" id="surf">🎨<span>先做表面工夫<small>拍個照、掛個布條，這一區先開心一點；東西還是壞的（一件事）</small></span></button><button class="btn ghost" id="x">先不要</button>`}`, d => {
+      d.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { if (S.tut && mem(b.dataset.m).sp !== 'eng') return; if (S.tut) S.tut = 3; closeSheets(); chooseHow(s, mem(b.dataset.m)); });
+      const sf = d.querySelector('#surf'); if (sf) sf.onclick = () => { closeSheets(); S.ap--; s.surface = 3; applyG(s.d, { res: 4, chief: 3 }); S.news.push(`🎨 ${s.bn}掛上「市府關心中」布條，大家先放心了一點。`); toast('這一區先開心一點。東西還是壞的。'); home(); };
+      const x = d.querySelector('#x'); if (x) x.onclick = closeSheets;
+    });
+  }
+  if (s.st === 'work' && s.ob) {
+    const o = OBS[s.ob];
+    return sheet(`<h2>${o.e} ${o.t}</h2><div class="muted">${s.bn}・負責：${mem(s.by) ? mem(s.by).n : '—'}・卡了 ${s.obAge} 季</div><div class="say">這件事不解決，工程就卡住不動（施工的影響還是照算）。${s.obHard ? `<br>${counOf(s.d).n}這次在擋你，比較難談。` : ''}</div>
+      ${o.a.map((a, i) => `<button class="opt ${a[1].gray ? 'gray' : ''} ${h && h.tgt === 'opt:' + i ? 'tgt' : ''}" data-i="${i}">${a[1].gray ? '🤫' : '🔧'}<span>${a[0]}<small>${optDesc(a, s)}</small></span></button>`).join('')}
+      ${S.tut ? '' : '<button class="btn ghost" id="x">先放著</button>'}`, d => {
+      d.querySelectorAll('[data-i]').forEach(b => b.onclick = () => { if (S.tut && b.dataset.i !== '0') return; closeSheets(); solve(s, +b.dataset.i); });
+      const x = d.querySelector('#x'); if (x) x.onclick = closeSheets;
+    });
+  }
+  return sheet(`<h2>🏗️ ${s.bn}</h2><div class="muted">負責：${mem(s.by).n}・進度 ${s.prog}/${s.dur}・已經做了 ${s.age} 季</div><div class="say">工程照進度走中。</div>
+    <button class="opt" id="push">🏃<span>親自去工地盯進度<small>這一季多推進一格（一件事）</small></span></button><button class="btn ghost" id="x">關閉</button>`, d => {
+    d.querySelector('#push').onclick = () => { closeSheets(); S.ap--; s.prog++; S.news.push(`🏃 你親自到${s.bn}的工地盯進度，工人很緊張。`); if (s.prog >= s.dur) finish(s, []); home(); };
+    d.querySelector('#x').onclick = closeSheets;
+  });
+}
+const optDesc = (a, s) => { const o = a[1], p = []; if (o.budget) p.push(`財政 ${o.budget * (s.obHard ? 2 : 1)}`); if (o.d) p.push(effStr(o.d)); if (o.all) p.push(`全市 ${o.all}`); if (o.gray) p.push('快，但有人會記住'); if (o.rush) p.push('品質可能變差'); if (o.swap) p.push('換人要花時間'); if (a[2]) p.push(`找${SPEC[a[2]]}專長的人比較容易成功`); return p.join('・') || '要花一件事'; };
+function chooseHow(s, m) {
+  const h = tutHint();
+  sheet(`<h2>${s.b} ${s.bn}</h2><div class="muted">負責：${m.n}${m.sp === s.need ? ' ⚡' : ''}${s.favor ? '・⚠️ 議員關說的廠商會來投標' : ''}</div>
+    <button class="opt ${h && h.tgt === 'opt:0' ? 'tgt' : ''}" id="n" ${S.budget < s.cost ? 'disabled' : ''}>📋<span>正常發包<small>${S.budget < s.cost ? `財政不夠（要 ${s.cost}，只剩 ${Math.round(S.budget)}）` : `財政 −${s.cost}`}</small></span></button>
+    ${S.tut ? '' : `<button class="opt gray" id="b" ${S.budget < s.cost ? 'disabled' : ''}>🤫<span>正常發包，但私下拿點好處<small>財政 −${s.cost}・你的口袋 +${Math.ceil(s.cost / 2)}・成果多半很差，可能被爆料</small></span></button>`}
+    ${S.tut ? '' : '<button class="btn ghost" id="x">算了</button>'}`, d => {
+    d.querySelector('#n').onclick = () => { closeSheets(); start(s, m, false); };
+    const b = d.querySelector('#b'); if (b) b.onclick = () => { closeSheets(); start(s, m, true); };
+    const x = d.querySelector('#x'); if (x) x.onclick = closeSheets;
+  });
+}
+function start(s, m, bribe) {
+  S.ap--; fx({ budget: -s.cost });
+  s.st = 'work'; s.by = m.id; s.prog = 0; s.age = 0; s.bribe = bribe; s.idle = 0; s.surface = 0; m.busy = s.id;
+  if (bribe) { fx({ pocket: Math.ceil(s.cost / 2) }); S.heat += 2; }
+  let msg = `🏗️ ${s.bn}開工了，由${m.n}負責。`;
+  if (m.per === 'image') { const r = reveal(m); if (r) msg += '<br>' + r; }
+  S.news.push(msg.replace(/<br>.*$/, ''));
+  if (S.tut === 3) S.tut = 4;
+  toastHtml(msg);
+  home();
+}
+function solve(s, i) {
+  const o = OBS[s.ob], a = o.a[i], m = mem(s.by), eff = a[1];
+  S.ap--;
+  let ok = !(a[2] && m && m.sp !== a[2] && Math.random() < 0.35);
+  if (S.tut) ok = true;
+  if (ok) {
+    if (eff.budget) fx({ budget: eff.budget * (s.obHard ? 2 : 1) });
+    if (eff.d) applyG(s.d, eff.d); if (eff.all) allG(eff.all);
+    if (eff.gray) { S.heat += 1; fx({ pocket: 1 }); }
+    if (eff.rush) s.rush += eff.rush;
+    if (eff.swap && m) replaceMember(m);
+    if (s.ob === 'council') cAtt(counOf(s.d), eff.gray ? 10 : 3);
+    S.news.push(`🔧 ${s.bn}：${a[0]}，${o.t}解決了。`);
+    s.ob = null; s.obAge = 0; s.obHard = 0;
+    toast(`解決了：${o.t}`);
+  } else { S.news.push(`😓 ${s.bn}：${a[0]}，但談不攏。`); toast('談不攏，下一季再試試'); }
+  if (S.tut === 6) S.tut = 7;
+  home();
+}
+// 完工：成果分三種，背後有亂數
+function finish(s, lines) {
+  const m = mem(s.by), c = counOf(s.d);
+  let q = rnd(3) - 1;
+  if (m && m.sp === s.need) q += 1;
+  if (m && m.per === 'pro') q += 1;
+  if (s.bribe) q -= 3;
+  if (s.favor) q -= 1;
+  q -= s.rush; if (s.stuckLong) q -= 1;
+  let tier = q <= -1 ? 'flawed' : (s.age > s.dur || Math.random() < .2) ? 'late' : 'great';
+  if (S.tut) tier = 'great';
+  s.st = tier; s.tier = tier; if (m) m.busy = null;
+  S.fixedCount++;
+  let mult = TIER_MULT[tier] * 1.3;
+  let msg = `${s.f} ${s.fn}：${(s.tiers || TIER_DEF)[['great', 'late', 'flawed'].indexOf(tier)]}`;
+  if (m && m.per === 'credit') { mult *= .7; msg += '<br>' + (reveal(m) || `${m.n}又站到你前面去剪綵了。`); }
+  if (tier !== 'flawed' && c.type === 'show' && Math.random() < .5) { mult *= .85; cAtt(c, 3); lines.push(`📸 ${c.n}比你早一步在${s.fn}前面開記者會：「這是我爭取來的！」`); }
+  if (tier === 'flawed' && (c.type === 'watch' || c.type === 'show')) { cAtt(c, -6); applyG(s.d, { res: -3 }); lines.push(`🎤 ${c.n}在${s.fn}前面開記者會：「這就是市府的品質！」`); c.known = true; }
+  // 時間差：完工當季先出現四成，接下來兩季各三成
+  applyG(s.d, s.after, mult * .4); if (s.cityAfter) applyG('all', s.cityAfter, mult * .4);
+  for (const k of [1, 2]) S.lag.push({ at: S.t + k, d: s.d, eff: s.after, city: s.cityAfter, mult: mult * .3 });
+  if (s.afterNews && tier !== 'flawed') S.lag.push({ at: S.t + 1, msg: s.afterNews });
+  lines.push(msg.replace(/<br>.*$/, ''));
+  S.done.push(s);
+}
+
+// ---------- 團隊 ----------
+function openMember(id) {
+  const m = mem(id);
+  sheet(`<div class="row"><img class="face" src="art/${m.img}.webp" alt=""><div><h2>${m.n}</h2><div class="muted">專長：${SPEC[m.sp]}・${m.busy ? '負責：' + site(m.busy).bn : '目前沒事'}</div></div></div>
+    <div class="say">${m.known ? (m.per === 'good' ? '用過了，靠得住。' : `原來他是「${PERS[m.per].n}」的人。`) : '還不知道他是什麼樣的人，派個工作就知道了。'}</div>
+    <button class="opt" id="swap" ${S.ap ? '' : 'disabled'}>🔁<span>換掉他<small>花一件事、全市 −2，新的人下一季才到；記者會說「內閣不穩」</small></span></button>
+    <div class="muted">🔒 主計、人事、警察、政風四位，依法不是市長換的。</div><button class="btn ghost" id="x">關閉</button>`, d => {
+    d.querySelector('#swap').onclick = () => { closeSheets(); S.ap--; allG(-2); replaceMember(m); home(); };
+    d.querySelector('#x').onclick = closeSheets;
+  });
+}
+function replaceMember(m, per) {
+  const i = S.team.indexOf(m), base = SPARE.find(x => x.sp === m.sp) || pick(SPARE);
+  const nm = { ...mk(base, i), off: 1, busy: m.busy };
+  if (per) nm.per = per;
+  S.team[i] = nm;
+  if (m.busy) site(m.busy).by = nm.id;
+  S.news.push(`🔁 ${m.n}下台，${nm.n}接任。記者：「新市府內閣不穩？」`);
+}
+
+// ---------- 來找你的人：議員、黨部 ----------
+function makeVisit() {
+  if ([5, 9, 13].includes(S.t)) {
+    const pool = ['rush', 'place', 'back', 'rally'].filter(k => !S.partyUsed.includes(k) && (k !== 'rush' || S.sites.some(s => s.st === 'work' && s.prog < s.dur - 1)));
+    if (pool.length) { const k = pick(pool); S.partyUsed.push(k); return { party: k }; }
+  }
+  if (S.t < 3 || Math.random() > .6) return null;
+  return { c: pick(S.coun).d };
+}
+function showVisit() {
+  const v = S.visit; let who, face, say, opts;
+  const done = (txt) => { S.visit = null; closeSheets(); if (txt) S.news.push(txt); home(); };
+  if (v.party) {
+    who = '🏢 黨部主委來電'; face = '';
+    const all = n => S.coun.forEach(c => cAtt(c, n));
+    if (v.party === 'rush') {
+      const s = pick(S.sites.filter(x => x.st === 'work' && x.prog < x.dur - 1));
+      say = `「明年就要選了，${s.bn}要在選前剪綵，懂嗎？」`;
+      opts = [['叫工程趕工', '進度 +2・品質可能變差', 1, () => { s.prog = Math.min(s.dur - 1, s.prog + 2); s.rush++; done(`⏩ 黨部要求，${s.bn}趕工。`); }],
+        ['照進度來，不趕', '黨部不高興，議員們跟著冷淡（議會 −5）', 0, () => { all(-5); done('🏢 你拒絕為了選舉趕工，黨部不太高興。'); }]];
+    } else if (v.party === 'place') {
+      say = '「這位前輩很有經驗，安排一個局長位子給他。」';
+      opts = [['接受', '議員們開心（議會 +5）・這個人是什麼樣的人，用了才知道', 1, () => { const m = pick(S.team.filter(x => !x.busy)) || S.team[0]; replaceMember(m, pick(['vendor', 'vendor', 'image', 'image', 'good'])); all(5); done(); }],
+        ['婉拒，局長我自己找', '議員們冷淡一點（議會 −5）', 0, () => { all(-5); done('🏢 你婉拒黨部推薦的人選。'); }]];
+    } else if (v.party === 'back') {
+      const c = pick(S.coun);
+      say = `「${c.n}明年連任很危險，${dName(c.d)}的建設多排一點。」`;
+      opts = [['照辦', `財政 −5・${c.n}很挺你、${dName(c.d)}里長開心・其他議員覺得不公平`, 1, () => { fx({ budget: -5 }); S.coun.forEach(x => cAtt(x, x === c ? 20 : -4)); applyG(c.d, { chief: 5 }); done(`🏢 ${dName(c.d)}的建設預算悄悄多了一筆。`); }],
+        ['各區一視同仁', `${c.n}不爽`, 0, () => { cAtt(c, -12); done(`🏢 ${c.n}覺得你不幫自己人。`); }]];
+    } else {
+      say = '「這週末的大型造勢活動，市長一定要上台。」';
+      opts = [['出席', '這一季少一件事・議員們開心（議會 +5）', 0, () => { S.ap = Math.max(0, S.ap - 1); all(5); done('📣 你在造勢場上講了二十分鐘。'); }],
+        ['說市政忙，不去', '議員們冷淡（議會 −5）', 0, () => { all(-5); done('🏢 造勢場上少了市長，台下議論紛紛。'); }]];
+    }
+  } else {
+    const c = counOf(v.c), d = c.d, first = !c.known;
+    who = `🎤 ${c.n}（${dName(d)}）`; face = `${c.img}${c.att >= 60 ? 'smile' : c.att <= 35 ? 'sad' : 'flat'}.webp`;
+    const ss = S.sites.filter(s => s.d === d), broken = ss.filter(s => s.st === 'broken'), active = ss.filter(s => s.st !== 'broken');
+    const tail = first ? `<br><small>原來${c.n}是「${CTYPE[c.type]}」的議員。</small>` : '';
+    c.known = true;
+    if (c.type === 'favor') {
+      const s = pick(broken.length ? broken : ss);
+      say = `「${s.bn}那個案子啊，我選區有一家廠商很優秀，給他做嘛。」`;
+      opts = [['答應他', `${c.n}會很挺你・那個工程成果多半會變差，有人會記住`, 1, () => { cAtt(c, 18); S.heat++; s.favor = 1; done(`🤝 ${c.n}很滿意。`); }],
+        ['請他照規矩去投標', `${c.n}不太爽`, 0, () => { cAtt(c, -10); done(); }],
+        ['請政風處長一起坐下來談', `${c.n}很不爽・但以後沒人敢來關說`, 0, () => { cAtt(c, -18); S.heat = Math.max(0, S.heat - 1); done(`🛡️ 你請政風處長陪同見${c.n}，消息傳開，關說的人少了。`); }]];
+    } else if (c.type === 'deal') {
+      say = '「市長，你的預算要過，我選區的里民活動中心也要排進去喔。」';
+      opts = [['答應，今年就排', `財政 −5・${c.n}和里長開心`, 0, () => { fx({ budget: -5 }); cAtt(c, 15); applyG(d, { chief: 5 }); done(`🤝 ${dName(d)}的活動中心排進預算。`); }],
+        ['先答應，明年再說', `${c.n}現在很開心，明年會想起來`, 1, () => { cAtt(c, 10); S.promise.push({ at: S.t + 4, d }); done(); }],
+        ['不行，預算照優先順序', `${c.n}不爽`, 0, () => { cAtt(c, -12); done(); }]];
+    } else if (c.type === 'show') {
+      const s = pick(active.filter(x => x.st === 'work').concat(broken).length ? active.filter(x => x.st === 'work').concat(broken) : ss);
+      say = `${c.n}在議會舉著一張放大的${s.b}照片質詢：「${s.bn}到底還要等多久？」`;
+      opts = [['親自上台回應', '可能回得很漂亮，也可能被剪成迷因', 0, () => { if (Math.random() < .5) { applyG(d, { res: 4, chief: 2 }); cAtt(c, 4); done('🎙️ 你答得有條有理，片段在脆上被轉了上千次。'); } else { allG(-1); applyG(d, { res: -2 }); cAtt(c, -3); done('🎙️ 你一時語塞的三秒，被剪成迷因。'); } }],
+        ['會後請局長把完整資料送過去', `${c.n}有面子，下次比較好說話`, 0, () => { cAtt(c, 10); done(); }],
+        ['不理他，讓他去演', `${c.n}不爽・${dName(d)}的人覺得你不在乎`, 0, () => { cAtt(c, -8); applyG(d, { res: -3 }); done(); }]];
+    } else {
+      const bad = active.find(s => s.bribe || s.favor);
+      if (bad) {
+        say = `「${bad.st === 'work' ? bad.bn : bad.fn}的招標和驗收資料我都看過了，問題很多。」`;
+        opts = [['配合調查，該辦的就辦', '議員肯定你・但查下去，什麼都藏不住', 0, () => { cAtt(c, 6); allG(-2); if (bad.bribe) S.heat += 3; done(`🔍 ${bad.bn}的工程案移送調查。`); }],
+          ['說議員在找麻煩', `${c.n}會追到底`, 1, () => { cAtt(c, -20); S.heat += 2; done(`🔍 ${c.n}召開記者會，把資料一頁一頁攤開。`); }]];
+      } else {
+        const s = pick(active.length ? active : ss);
+        say = `「${s.st === 'broken' ? s.bn : s.st === 'work' ? s.bn : s.fn}的工期和預算，請市府說清楚。」`;
+        opts = [['請議員一起到現場會勘', `這一季少一件事・${c.n}和居民覺得你有誠意`, 0, () => { S.ap = Math.max(0, S.ap - 1); cAtt(c, 12); applyG(d, { res: 3 }); done(`🦺 你和${c.n}一起到現場會勘。`); }],
+          ['書面回覆：依法辦理', `${c.n}覺得被敷衍`, 0, () => { cAtt(c, -6); done(); }]];
+      }
+    }
+    say += tail;
+  }
+  sheet(`<div class="row">${face ? `<img class="face" src="${face}" alt="">` : '<div style="font-size:48px">🏢</div>'}<h2>${who}</h2></div><div class="say">${say}</div>
+    ${opts.map((o, i) => `<button class="opt ${o[2] ? 'gray' : ''}" data-v="${i}">${o[2] ? '🤫' : '💬'}<span>${o[0]}<small>${o[1]}</small></span></button>`).join('')}`, x => {
+    x.querySelectorAll('[data-v]').forEach(b => b.onclick = () => opts[+b.dataset.v][3]());
+  }, true);
+}
+
+// ---------- 1999 陳情 ----------
+const PET = [
+  ['res', '巷口路燈一直閃，晚上不敢走'], ['res', '樓下熱炒店油煙很重，窗戶不敢開'], ['res', '鄰居頂樓加蓋擋住採光'], ['res', '社區流浪狗變多了'], ['res', '垃圾車時間太早，上班族追不到'], ['res', '大雨過後巷子積水到小腿'], ['res', '凌晨改裝車在大馬路上飆車'],
+  ['com', '公車常常不準時、過站不停'], ['com', '人行道被機車停滿，只能走馬路'], ['com', '路口行人秒數太短，長輩走不完'], ['com', '路面坑洞害機車騎士摔車'], ['com', '公車站沒有遮雨棚'],
+  ['shop', '店門口被畫紅線，客人不能停'], ['shop', '夜市攤商佔用店門口'], ['shop', '招牌被要求拆除，沒有補助'], ['shop', '同一條街一年挖了四次'],
+  ['chief', '里民活動中心冷氣壞了半年'], ['chief', '公園的樹太久沒修剪，颱風前很擔心'], ['chief', '里長說陳情三次都被回覆「已列管」']
+];
+const PET_WORK = [['res', '工地從早上六點吵到晚上'], ['shop', '施工圍籬擋住店門口，生意掉一半'], ['com', '工程改道之後每天塞爆']];
+function makePetitions() {
+  return shuffle(DISTRICTS).slice(0, 3).map(d => {
+    const w = S.sites.some(s => s.d === d.id && s.st === 'work') && Math.random() < .5;
+    const p = pick(w ? PET_WORK : PET); return { d: d.id, g: p[0], t: p[1] };
+  });
+}
+
+// ---------- 下一季 ----------
+function endMonth() {
+  S.ap = 0; const lines = [];
+  for (const s of S.sites) {
+    if (s.st === 'broken') {
+      s.idle++;
+      if (s.idle === 6) { lines.push(`💢 ${s.bn}越來越爛，里長在臉書開罵。`); applyG(s.d, { res: -3, chief: -4 }); } else if (s.idle > 6 && s.idle % 3 === 0) applyG(s.d, { res: -1, chief: -2 });
+      if (s.surface) { s.surface--; if (!s.surface) { applyG(s.d, { res: -5, chief: -4 }); lines.push(`🎨 ${s.bn}的布條還在，東西還是壞的。脆上：「市府只會掛布條」。`); } }
+      continue;
+    }
+    if (isDone(s)) {
+      if (s.maint) S.budget = clamp(S.budget - s.maint);
+      if (s.income) S.budget = clamp(S.budget + s.income);
+      if (s.st === 'flawed' && Math.random() < .15) { lines.push(`🔧 ${s.fn}又出問題了（${pick(['停擺半天', '漏水', '跳電', '地上冒出裂縫'])}），1999 電話被打爆。`); applyG(s.d, { res: -2, com: -2 }); }
+      continue;
+    }
+    // 施工中：不管卡不卡住，施工的影響照算（時間差：先痛再甜）
+    const m = mem(s.by);
+    s.age++;
+    if (!S.tut) { applyG(s.d, s.during); if (s.cityDuring) applyG('all', s.cityDuring); }
+    if (s.ob) {
+      s.obAge++;
+      if (s.obAge >= 3) { s.stuckLong = 1; lines.push(`⛔ ${s.bn}卡了 ${s.obAge} 季，${OBS[s.ob].t}還沒解決。附近的人越來越不耐煩。`); applyG(s.d, { res: -2, com: -2 }); }
+      if (m && m.per === 'blame' && !m.known) lines.push(reveal(m).replace(/<br>.*$/, ''));
+      continue;
+    }
+    let step = 1;
+    if (m && m.sp === s.need) step += Math.random() < 0.5 ? 1 : 0;
+    if (m && m.per === 'pro') { step += 1; const r = reveal(m); if (r) lines.push(r.replace(/<br>.*$/, '')); }
+    if (m && m.per === 'image' && Math.random() < 0.5) step = 0;
+    if (m && m.off) step = 0;
+    if (Math.random() < .12 && !S.tut) { step = 0; lines.push(`🌧️ ${s.bn}遇到${pick(['連續豪雨', '挖到不明管線', '缺工', '鋼筋漲價'])}，這一季沒進度。`); }
+    if (S.tut) step = 1;
+    s.prog = Math.min(s.dur, s.prog + step);
+    if (s.prog >= s.dur) { finish(s, lines); continue; }
+    if (S.tut === 4 && s.id === 'park') { s.ob = 'protest'; lines.push('📢 公園附近的居民抗議施工太吵！'); S.tut = 5; continue; }
+    if (!S.tut && Math.random() < (s.hard ? 0.45 : 0.3)) {
+      s.ob = pick(s.obs);
+      const c = counOf(s.d);
+      if (s.ob === 'council' && c.att >= 65) { s.ob = null; cAtt(c, -4); lines.push(`🤝 ${c.n}這次幫你護航，${s.bn}的預算過了。`); }
+      else { if (s.ob === 'council' && c.att <= 35) { s.obHard = 1; lines.push(`🏛️ ${s.bn}：${c.n}帶頭刪預算。`); } else lines.push(`${OBS[s.ob].e} ${s.bn}：${OBS[s.ob].t}`); }
+    }
+    if (m && m.per === 'vendor' && Math.random() < 0.3) { S.heat += 1; const r = reveal(m); lines.push(r ? r.replace(/<br>.*$/, '') : `📸 ${m.n}又被拍到跟廠商吃飯。`); allG(-2); }
+  }
+  // 時間差：之前做的事，這一季才看到
+  S.lag = S.lag.filter(l => {
+    if (l.at > S.t) return true;
+    if (l.eff) { applyG(l.d, l.eff, l.mult); if (l.city) applyG('all', l.city, l.mult); }
+    if (l.budget) S.budget = clamp(S.budget + l.budget);
+    if (l.msg) lines.push(l.msg);
+    return false;
+  });
+  S.promise = S.promise.filter(p => { if (p.at > S.t) return true; const c = counOf(p.d); cAtt(c, -20); applyG(p.d, { chief: -4 }); lines.push(`😤 去年答應${c.n}的活動中心，預算書上找不到。${c.n}：「市長說話不算話！」`); return false; });
+  S.team.forEach(m => { if (m.off) m.off = 0; });
+  const income = 2 + Math.round(council() / 20); S.budget = clamp(S.budget + income);
+  if (S.heat >= 6 && Math.random() < 0.25 + (S.heat - 6) * 0.08) { S.caught = true; lines.push('🚔 檢調到市府調閱工程資料。記者在門口等你。'); allG(-12); }
+  const all = S.news.concat(lines); S.news = [];
+  if (S.tut === 7) S.tut = 8;
+  S.pets = S.tut ? [] : makePetitions();
+  monthReport(all, income);
+}
+const USERS = ['捷運通勤的阿凱', '早餐店阿姨', '貓奴工程師', '外送員小陳', '退休國文老師', '機車族日常', '三寶媽在線上', '里長的頭號粉絲', '熬夜的研究生', '市場賣菜的大姊', '計程車運將', '咖啡店店長', '公車司機老張', '自行車通勤族'];
+function monthReport(lines, income) {
+  const fixedNow = S.done.filter(x => !x.shown); fixedNow.forEach(x => x.shown = 1);
+  // 誰開心誰不爽：跟這一季開始時比
+  const ch = []; DISTRICTS.forEach(d => Object.keys(GROUPS).forEach(k => { const v = Math.round(S.dist[d.id][k] - S.snap[d.id][k]); if (v) ch.push({ d: d.id, k, v }); }));
+  const ups = ch.filter(x => x.v >= 2).sort((a, b) => b.v - a.v).slice(0, 3), downs = ch.filter(x => x.v <= -2).sort((a, b) => a.v - b.v).slice(0, 3);
+  const good = fixedNow.some(x => x.st !== 'flawed'), bad = downs.length >= 2 || lines.some(l => /💢|⛔|🚔|📸|🔧/.test(l));
+  const C = { good: ['欸，' + (fixedNow[0] ? fixedNow[0].fn : '這個') + '真的弄好了', '第一次覺得市府有在做事', '我家附近終於變漂亮了'], bad: ['四年很快就過了喔', '市府到底在幹嘛', '只會開記者會', '繳稅繳心酸的'], mid: ['方向對啦，但也太慢', '先不要高興太早', '路過看了一下，還在施工', '1999 打過去，說已列管'] };
+  const us = shuffle(USERS);
+  const line = x => `<div>${dName(x.d)} ${GROUPS[x.k][0]}${GROUPS[x.k][1]} <span class="${x.v > 0 ? 'up' : 'down'}">${x.v > 0 ? '+' : '−'}${Math.abs(x.v)}</span></div>`;
+  let sel = -1;
+  app.innerHTML = `<div class="top"><div class="row"><img class="face s" src="${S.face}${good ? 'big' : bad ? 'sad' : 'flat'}.webp" alt=""><span class="month">${label(S.t)}・季末</span></div>${bars()}</div>
+    ${fixedNow.length ? `<div class="card center"><div style="font-size:42px">${fixedNow.map(x => x.b + '→' + x.f).join('　')}</div>${fixedNow.map(x => `<div><b>${x.fn}</b><br><span class="muted">${(x.tiers || TIER_DEF)[['great', 'late', 'flawed'].indexOf(x.st)]}</span></div>`).join('')}</div>` : ''}
+    <div class="card news">${lines.length ? lines.map(l => `<div>${l}</div>`).join('') : '<div>這一季平平靜靜，什麼都沒發生。</div>'}<div class="muted">💰 稅收和補助 +${income}（議會越挺你越多）</div></div>
+    ${ups.length || downs.length ? `<div class="card who"><div class="muted">這一季誰開心、誰不爽</div><div class="row" style="align-items:flex-start"><div style="flex:1">${ups.map(line).join('') || '<div class="muted">沒有人特別開心</div>'}</div><div style="flex:1">${downs.map(line).join('') || '<div class="muted">沒有人特別不爽</div>'}</div></div></div>` : ''}
+    ${S.pets.length ? `<div class="card"><div class="muted">📞 1999 本季熱門陳情（挑一件列管，其他的會小小不滿）</div>${S.pets.map((p, i) => `<button class="opt" data-pet="${i}"><span>${dName(p.d)}・${GROUPS[p.g][0]}${GROUPS[p.g][1]}<small>「${p.t}」</small></span></button>`).join('')}</div>` : ''}
+    <div class="card"><div class="muted">🧵 脆上的反應</div><div class="post"><b>${us[0]}</b>${pick(good ? C.good : bad ? C.bad : C.mid)}</div><div class="post"><b>${us[1]}</b>${pick(C.mid)}</div></div>
+    ${S.tut === 8 ? '<div class="hint tut">✨ 公園修好了！完工的效果會分三季慢慢出來。按「下一季」繼續。</div>' : ''}
+    <button class="btn" id="go">${S.t >= TURNS ? '看結局 →' : '下一季 →'}</button>`;
+  document.querySelectorAll('[data-pet]').forEach(b => b.onclick = () => { sel = +b.dataset.pet; document.querySelectorAll('[data-pet]').forEach(x => x.classList.toggle('on', x === b)); });
+  $('#go').onclick = () => {
+    S.pets.forEach((p, i) => applyG(p.d, { [p.g]: i === sel ? 4 : -1 }));
+    if (sel >= 0) S.news.push(`📞 1999 列管：${dName(S.pets[sel].d)}「${S.pets[sel].t}」，局處限期改善。`);
+    if (S.tut === 8) S.tut = 9;
+    if (S.t >= TURNS || pop() <= 5) return ending();
+    S.t++; S.ap = AP; snap(); S.visit = S.tut ? null : makeVisit(); home();
+  };
+}
+
+// ---------- 結局：城市樣貌、民意、議會、你的口袋 ----------
+function ending() {
+  const city = cityPct(), p = pop(), clean = S.pocket === 0, rich = S.pocket >= 15;
+  let E;
+  if (S.caught && city >= 50) E = ['🚔', '城市很美，但你被約談了', '新的公園、新的捷運、新的市場。剪綵照片上的你，現在出現在新聞的另一個版面。'];
+  else if (S.caught) E = ['🚔', '又爛又貪', '城市沒修好，口袋倒是滿了。做壞事一定會被抓。'];
+  else if (p <= 5) E = ['🪧', '被罷免了', '民意掉到谷底，罷免案通過。'];
+  else if (rich && city < 40) E = ['💼', '口袋很滿，城市很破', '你沒被抓到，但路過的每個工地都在提醒大家這四年發生了什麼。'];
+  else if (city >= 55 && p >= 50) E = ['🌤️', 'N 城變漂亮了，連任穩了', '四年修好了 ' + S.fixedCount + ' 個地方。連任那晚，你想起就職那天，滿地圖的 🚧。'];
+  else if (city >= 50) E = ['🏗️', '城市修好了，但大家不買單', '工程一個個完工，可是施工那幾年的塞車、噪音、被拆的招牌，大家都記得。'];
+  else if (clean && city < 30) E = ['🫥', '清清白白，但沒人記得你', '你一毛錢都沒拿，也沒修好幾個地方。四年後，大家記得的是前任。'];
+  else E = ['🧩', '修修補補的四年', '有修好的、也有還在施工的。N 城沒有變成你想的樣子，但比你接手時好一點。'];
+  const gs = []; DISTRICTS.forEach(d => Object.keys(GROUPS).forEach(k => gs.push({ d: d.id, k, v: S.dist[d.id][k] }))); gs.sort((a, b) => b.v - a.v);
+  const gl = x => `${dName(x.d)}的${GROUPS[x.k][1]}`;
+  app.innerHTML = `<div class="ending"><img class="face" src="${S.face}${E[0] === '🌤️' ? 'big' : E[0] === '🚔' || E[0] === '🪧' ? 'sad' : 'flat'}.webp" alt=""><div class="big">${E[0]}</div><h2>${E[1]}</h2><p>${E[2]}</p>
+    <div class="tri"><div><b>🏙️${city}%</b>城市修好</div><div><b>😊${Math.round(p)}</b>民意</div><div><b>🏛️${Math.round(council())}</b>議會</div><div><b>🤫${S.pocket}</b>你的口袋</div></div>
+    <div class="card" style="text-align:left">💚 最挺你的：${gl(gs[0])}、${gl(gs[1])}<br>💢 最不爽的：${gl(gs[gs.length - 1])}、${gl(gs[gs.length - 2])}</div>
+    <div class="card" style="text-align:left">👥 你的團隊：${S.team.map(m => `${m.n}${m.known ? (m.per === 'good' ? '（靠得住）' : `（${PERS[m.per].n}）`) : '（一直沒看清楚）'}`).join('、')}<br>🎤 議員：${S.coun.map(c => `${c.n}（${CTYPE[c.type]}）`).join('、')}</div>
+    <button class="btn" id="again">🔁 再當一次市長</button></div>`;
+  $('#again').onclick = () => { newGame(false); home(); };
+}
+function toast(t) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 3000); }
+function toastHtml(t) { const d = document.createElement('div'); d.className = 'toast'; d.innerHTML = t; document.body.appendChild(d); setTimeout(() => d.remove(), 3500); }
+
+// ---------- 標題 ----------
+function title() {
+  app.innerHTML = `<h1>🏙️ 修城市</h1><p class="center muted">《我推的市長》系列・試玩版 0.3 地圖版（未採用，留作對照）</p>
+    <div class="card"><p><b>你是剛選上的 N 城市長。</b></p><p>前任留下一個百廢待舉的城市：蓋一半的場館、暗暗的路燈、延期的捷運、髒亂的公園……</p><p>每季只能做 <b>3 件事</b>。每件事都有人開心、有人不爽；議員有的幫你、有的擋你；做好做壞，要過一陣子才看得出來。</p></div>
+    <button class="btn" id="go">上任（有教學）→</button><button class="btn ghost" id="skip">我玩過了，跳過教學</button>
+    <p class="center muted">人物、政黨、城市全部虛構・摩卡與貓貓小隊<br><a href="v02.html" style="color:inherit">舊版 0.2</a></p>`;
+  $('#go').onclick = () => { newGame(true); home(); };
+  $('#skip').onclick = () => { newGame(false); home(); };
+}
+title();
+</script>
+</body>
+</html>
