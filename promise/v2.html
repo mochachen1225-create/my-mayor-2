@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-cache">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>一張支票（v2 存檔）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Huninn&display=swap" rel="stylesheet">
+<style>
+/* 配色、字型延續選戰篇 */
+:root { --paper: #faf8f5; --ink: #2a2a2a; --muted: #7a7a7a; --room: #2b2f36; --red: #d93636; --gold: #e0a526; --green: #2e9e6a; --line: #e4e0da; }
+@font-face { font-family: 'ColorEmoji'; src: local('Apple Color Emoji'), local('Segoe UI Emoji'), local('Noto Color Emoji'); unicode-range: U+1F000-1FAFF, U+2600-27BF, U+2B00-2BFF, U+FE0F; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; background: #1d2026; color: var(--ink); font-family: 'ColorEmoji', 'Huninn', 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif; overscroll-behavior: none; }
+#app { max-width: 480px; margin: 0 auto; min-height: 100vh; background: var(--paper); padding: 8px 12px 16px; position: relative; overflow: hidden; }
+button { font-family: inherit; cursor: pointer; }
+h1 { text-align: center; margin: 28px 0 4px; font-size: 28px; }
+h2 { margin: 6px 0; font-size: 20px; }
+.muted { color: var(--muted); font-size: 13px; }
+.center { text-align: center; }
+.btn { display: block; width: 100%; border: 0; border-radius: 999px; padding: 14px; margin: 10px 0; font-size: 17px; font-weight: 700; background: var(--room); color: #fff; }
+.btn.ghost { background: transparent; color: var(--ink); border: 2px solid var(--room); }
+.card { background: #fff; border: 2px solid var(--line); border-radius: 16px; padding: 12px; margin: 10px 0; }
+/* 支票進度：笑點在這裡 */
+.promise { background: #fff; border: 2px dashed var(--room); border-radius: 14px; padding: 8px 10px; }
+.promise .t { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 2px 8px; }
+.stage { font-size: 20px; font-weight: 800; margin: 2px 0; display: flex; align-items: center; gap: 8px; }
+.stage .pd { font-size: 12px; color: #8a5a00; font-weight: 400; }
+.ladder { display: flex; gap: 3px; margin-top: 4px; }
+.ladder i { flex: 1; height: 6px; border-radius: 3px; background: #eee; }
+.ladder i.ok { background: var(--green); } .ladder i.now { background: var(--gold); animation: bob 1s infinite; }
+.next { font-size: 12px; color: var(--muted); margin-top: 3px; }
+@keyframes bob { 50% { opacity: .5; } }
+.stage.back { color: var(--red); animation: shake .5s; }
+.stage.up { color: var(--green); animation: pop .6s; }
+@keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+@keyframes pop { 50% { transform: scale(1.12); } }
+/* 人：記得你上次怎麼對他 */
+.people { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 8px; }
+.pp { text-align: center; font-size: 10px; position: relative; }
+.pp img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; background: #f3e6d0; border: 3px solid #ddd; }
+.pp.g img { border-color: var(--green); } .pp.r img { border-color: var(--red); }
+.pp .mf { position: absolute; top: -2px; right: 10px; font-size: 15px; }
+.pp .tg { display: block; min-height: 13px; color: #8a5a00; }
+.pp.hit { animation: pop .6s; }
+.when { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 6px; }
+/* 卡片 */
+.stagebox { position: relative; height: 300px; margin-top: 8px; }
+.cardx { position: absolute; inset: 0 6px; background: #fff; border: 3px solid var(--room); border-radius: 22px; padding: 14px 14px; text-align: center; touch-action: none; user-select: none; -webkit-user-select: none; box-shadow: 0 8px 0 rgba(0,0,0,.08); transition: transform .25s; display: flex; flex-direction: column; align-items: center; }
+.cardx.drag { transition: none; }
+.cardx.out { transition: transform .3s, opacity .3s; opacity: 0; }
+.cardx img { width: 104px; height: 104px; border-radius: 50%; object-fit: cover; background: #f3e6d0; pointer-events: none; }
+.cardx .who { font-weight: 800; margin-top: 6px; font-size: 14px; }
+.cardx .who small { font-weight: 400; color: var(--muted); }
+.cardx .txt { font-size: 18px; line-height: 1.55; margin-top: 8px; flex: 1; display: flex; align-items: center; }
+.cardx.ev { border-color: var(--red); }
+.choice { position: absolute; top: 12px; max-width: 46%; padding: 6px 10px; border-radius: 12px; font-weight: 800; font-size: 14px; background: var(--room); color: #fff; opacity: 0; transition: opacity .1s; pointer-events: none; }
+.choice.l { right: 10px; } .choice.r { left: 10px; }
+.btns { display: flex; gap: 8px; margin-top: 12px; }
+.btns button { flex: 1; border: 2px solid var(--room); background: #fff; border-radius: 14px; padding: 8px 6px; font-size: 14px; font-weight: 700; color: var(--ink); min-height: 64px; line-height: 1.35; }
+.btns button small { display: block; font-size: 11px; font-weight: 400; color: #8a5a00; margin-top: 3px; }
+.react { position: fixed; left: 50%; bottom: 120px; transform: translateX(-50%); background: var(--room); color: #fff; border-radius: 16px; padding: 10px 14px; font-size: 15px; max-width: 88vw; z-index: 30; animation: rup .25s; display: flex; gap: 8px; align-items: center; }
+.react img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; }
+@keyframes rup { from { transform: translate(-50%, 16px); opacity: 0; } }
+.toast { position: fixed; left: 50%; top: 6px; transform: translateX(-50%); padding: 9px 16px; border-radius: 12px; font-size: 16px; font-weight: 800; z-index: 31; animation: fade 1.8s forwards; pointer-events: none; color: #fff; }
+.toast.up { background: var(--green); } .toast.back { background: var(--red); } .toast.mid { background: var(--room); }
+@keyframes fade { 0%, 75% { opacity: 1; } 100% { opacity: 0; } }
+/* 結局卡（要好截圖） */
+.end { background: #fff; border: 3px solid var(--room); border-radius: 22px; padding: 16px 14px; margin-top: 10px; }
+.end .big { font-size: 22px; font-weight: 800; margin: 4px 0; }
+.line { display: flex; gap: 4px; align-items: center; justify-content: center; margin: 8px 0; font-size: 13px; }
+.line b { width: 18px; height: 18px; border-radius: 50%; border: 3px solid var(--room); background: #fff; display: inline-block; }
+.line b.cut { border-style: dashed; border-color: #bbb; }
+.line i { width: 22px; height: 4px; background: var(--room); display: inline-block; }
+.line i.cut { background: repeating-linear-gradient(90deg, #bbb 0 4px, transparent 4px 8px); }
+.credit { display: flex; height: 22px; border-radius: 11px; overflow: hidden; margin: 6px 0 2px; font-size: 11px; color: #fff; }
+.credit div { display: flex; align-items: center; justify-content: center; white-space: nowrap; overflow: hidden; }
+.rows div { font-size: 14px; padding: 5px 0; border-bottom: 1px dashed #eee; text-align: left; }
+.post { text-align: left; background: #f6f3ee; border-radius: 12px; padding: 8px 10px; font-size: 14px; margin-top: 10px; }
+.post b { font-size: 12px; color: #6b5a33; display: block; }
+/* v2：選主線、民意、交棒結局 */
+.lines { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
+.ln { border: 2px solid var(--line); background: #fff; border-radius: 14px; padding: 10px 8px; text-align: left; font-size: 14px; color: var(--ink); position: relative; min-height: 78px; }
+.ln small { display: block; font-size: 11px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+.ln.on { border-color: var(--green); background: #eef8f1; }
+.ln.on::after { content: '✓'; position: absolute; right: 8px; top: 6px; color: var(--green); font-weight: 800; }
+.ln:disabled { opacity: .45; }
+.pop { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-top: 6px; }
+.pop i { flex: 1; height: 8px; border-radius: 4px; background: #eee; overflow: hidden; display: block; }
+.pop i b { display: block; height: 100%; transition: width .4s; }
+.voice { position: fixed; left: 50%; bottom: 200px; transform: translateX(-50%); background: #fff; border: 2px solid var(--line); color: var(--ink); border-radius: 12px; padding: 6px 10px; font-size: 13px; max-width: 90vw; z-index: 29; animation: fade 2.2s forwards; pointer-events: none; }
+.voice b { color: #6b5a33; font-size: 11px; display: block; }
+.steps { text-align: left; margin: 8px 0; }
+.steps div { font-size: 13px; padding: 3px 0; display: flex; gap: 6px; }
+.steps div.ok { color: var(--green); } .steps div.now { color: #8a5a00; font-weight: 800; } .steps div.later { color: #999; }
+.timeline { text-align: left; background: #f6f3ee; border-radius: 12px; padding: 8px 10px; font-size: 13px; margin-top: 8px; line-height: 1.7; }
+.src { font-size: 11px; color: var(--muted); text-align: left; margin-top: 8px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+// ==========================================================
+// 一張支票 v2（試玩）— 選上了，才發現推不動
+// 架構：開場選 2 條主線 → 每條照真實流程分關 → 民意線 → 市長交棒結局
+// 這一版只開放「捷運延伸線」，其他主線之後一條一條做
+// 摩卡與貓貓小隊
+// ==========================================================
+const $ = s => document.querySelector(s), app = $('#app');
+const rnd = n => Math.floor(Math.random() * n), pick = a => a[rnd(a.length)];
+const ART = '../fires/art/';
+const TURNS = 16; // 一個決定＝一季，四年 16 季
+const NEEDS = [3, 4, 4, 4, 3, 3]; // 每一關要推幾下（中央審查、規劃、環評最久）
+const need = () => NEEDS[S.stage] || 3;
+const SAVE = 'promise.v2';
+let SV = (() => { try { return JSON.parse(localStorage.getItem(SAVE)) || {}; } catch (e) { return {}; } })();
+const save = () => { try { localStorage.setItem(SAVE, JSON.stringify(SV)); } catch (e) {} };
+
+// ---------- 主線清單：照「市民最希望優先處理的議題」排（都更、交通、環境衛生、教育、長照醫療、居住；來源見 NOTES，只當參考）。這一版只開放捷運 ----------
+const LINES = {
+  renew: { e: '🏚️', n: '都更和居住', promise: '危老公寓加速重建，再蓋一萬戶社宅' },
+  metro: { e: '🚇', n: '捷運延伸線', promise: '四年內，捷運延伸線動工', open: true },
+  walk: { e: '🚸', n: '行人安全', promise: '終結行人地獄' },
+  elder: { e: '🧓', n: '長照和醫療', promise: '長照據點走路 10 分鐘到' },
+  school: { e: '🏫', n: '教育', promise: '老舊校舍全部補強' },
+  clean: { e: '🧹', n: '環境衛生', promise: '垃圾車不再追不到' }
+};
+// ---------- 捷運主線：照真實流程分關（來源見 NOTES 和結局頁）----------
+// 真實流程：整體路網評估 → 可行性研究（交通部審、行政院核定）→ 綜合規劃（含財務計畫、地方分擔，行政院核定）→ 環評、都市計畫變更 → 用地取得、設計 → 預算、發包 → 動工 → 通車
+const STAGES = ['可行性研究', '中央核定可行性', '綜合規劃', '環評和都市計畫', '用地取得', '議會預算和發包', '動工', '通車'];
+const YEARS_LEFT = [2, 1.5, 2, 1.5, 1.5, 1, 0, 8]; // 每關真實大約要幾年（萬大線、環狀線東環段的經驗值）
+// 會來找你的人（各有盤算、記得你上次怎麼對他）
+const P = {
+  dir: { n: '高局長', role: '捷運工程局長・政務官', img: 'npc_foreign.webp', mind: '表面挺你，其實在看下一個位子' },
+  chief: { n: '老陳', role: '規劃科科長・事務官', img: 'npc_staff.webp', mind: '在這裡待了 22 年，比你久' },
+  coun: { n: '方議員', role: '沿線選區議員', img: 'C_m_flat.webp', mind: '什麼都可以談' },
+  li: { n: '阿雪姨', role: '機廠預定地的里長', img: 'C_f_flat.webp', mind: '她的里民會不會被吵、會不會被徵收' }
+};
+const GUEST = { central: { n: '交通部官員', role: '中央審查', img: 'D_f_flat.webp' }, fin: { n: '主計處長', role: '市府管錢的人', img: 'B_f_flat.webp' }, res: { n: '里民代表', role: '說明會現場', img: 'E_m_flat.webp' } };
+const WHO = k => P[k] || GUEST[k];
+const METHOD = { press: '💪 施壓', credit: '🎖️ 給功勞', trade: '🤝 交換', concede: '✂️ 讓步', process: '⏳ 照程序', self: '🏃 自己來' };
+const USERS = ['捷運通勤的阿凱', '早餐店阿姨', '外送員小陳', '退休國文老師', '三寶媽在線上', '熬夜的研究生', '機車族日常', '公車司機老張'];
+
+// ---------- 狀態 ----------
+let S;
+function newGame(lines, keep) {
+  S = { n: 0, stage: 0, push: 0, stations: 5, pop: 50, mood: { dir: 0, chief: 0, coun: 0, li: 0 }, credit: { dir: 0, coun: 0 }, debt: { dir: 0, coun: 0, li: 0, chief: 0 },
+    pressed: {}, seen: {}, last: null, log: [], debtAt: {}, visits: {}, stuck: 0, lines, term: 1, unlocked: false };
+  if (keep) Object.assign(S, keep, { n: 0, term: keep.term + 1, seen: { ...keep.seen }, last: null });
+}
+const when = () => { const n = Math.min(S.n, TURNS - 1), left = (TURNS - S.n) * 3; return `第 ${S.term > 1 ? S.term + ' 任第 ' : ''}${Math.floor(n / 4) + 1} 年・${'春夏秋冬'[n % 4]}　離選舉還有 ${left >= 12 ? Math.floor(left / 12) + ' 年' : ''}${left % 12 ? ' ' + left % 12 + ' 個月' : ''}`; };
+
+// ---------- 捷運卡片 ----------
+// 選項：t 文字、m 做法、push 推幾下、mood {人: ±}、pop 民意、credit [人, %]、debt 人、cut 砍站、back 退一關、react [人, 一句話]、voice 民眾的一句話
+const SC = {
+  0: [
+    () => ({ who: 'dir', text: '市長放心，可行性研究我們全力推動！顧問公司已經在找了。',
+      L: { t: '半年內要看到報告', m: 'press', push: 2, mood: { dir: -1 }, react: ['dir', '……是，市長。（笑容僵了一秒）'] },
+      R: { t: '記者會你來講', m: 'credit', push: 2, credit: ['dir', 15], mood: { dir: 1 }, react: ['dir', '謝謝市長！我馬上約記者。'] } }),
+    () => ({ who: 'chief', text: '報告市長，要先送整體路網評估，交通部才會收個別路線的可行性研究。',
+      L: { t: '兩份一起送', m: 'press', push: 2, mood: { chief: -1 }, react: ['chief', '一起送？……（推了一下眼鏡）'] },
+      R: { t: '好，照順序來', m: 'process', push: 1, mood: { chief: 1 }, react: ['chief', '市長很明理。'] } })
+  ],
+  1: [
+    () => ({ who: 'central', text: '可行性研究的運量推估太樂觀了，請貴府再檢討。',
+      L: { t: '找立委去部裡關心', m: 'trade', push: 2, debt: 'coun', mood: { coun: 1 }, react: ['coun', '我認識那個委員，包在我身上。'] },
+      R: { t: '照意見修，重送', m: 'process', push: 1, pop: -1, voice: ['1999', '捷運到底要研究幾年？'], react: ['chief', '我們再修一版。'] } }),
+    () => ({ who: 'dir', text: '交通部說要再開一次審查會，委員都是學者。',
+      L: { t: '你去，簡報做漂亮一點', m: 'credit', push: 2, credit: ['dir', 10], mood: { dir: 1 }, react: ['dir', '我最會跟學者講話。'] },
+      R: { t: '我親自去', m: 'self', push: 1, pop: 1, react: ['dir', '市長親自去？那……我陪您。'] } })
+  ],
+  2: [
+    () => ({ who: 'fin', text: '綜合規劃要附財務計畫：自償率不夠，地方要分擔四成。',
+      L: { t: '自籌就自籌，路線砍一站', m: 'concede', push: 2, cut: 1, pop: -2, voice: ['脆', '我家那站被砍了？選前不是這樣說的'], react: ['fin', '那其他預算要排到後面了。'] },
+      R: { t: '站旁土地開發來補', m: 'trade', push: 2, debt: 'coun', pop: -1, voice: ['脆', '又是開發商？'], react: ['coun', '那幾塊地，我熟。'] } }),
+    () => ({ who: 'chief', text: '綜合規劃第三版，顧問公司說還要再修。',
+      L: { t: '這週定稿，不准再改', m: 'press', push: 2, mood: { chief: -1 }, react: ['chief', '（在筆記本上寫了什麼）'] },
+      R: { t: '到底卡在哪？我聽你說', m: 'process', push: 1, mood: { chief: 1 }, react: ['chief', '市長是第一個問我的。'] } })
+  ],
+  3: [
+    () => ({ who: 'li', text: '機廠要蓋在我們里？說明會我會帶三百人去。',
+      L: { t: '出口開在你們市場前', m: 'trade', push: 2, debt: 'li', mood: { li: 1 }, react: ['li', '這還差不多。你說的喔。'] },
+      R: { t: '機廠移走，路線少一站', m: 'concede', push: 2, cut: 1, mood: { li: 1 }, pop: -1, react: ['li', '好啦。隔壁里的你自己去處理。'] } }),
+    () => ({ who: 'res', text: '（說明會現場）「我們不要機廠！」「施工十年誰負責？」「我家會不會被徵收？」', ev2: 1,
+      L: { t: '站上台，一題一題回答', m: 'self', push: 1, pop: 2, mood: { li: 1 }, voice: ['脆', '市長被罵了兩個小時都沒走，有點佩服'], react: ['li', '至少你有來。'] },
+      R: { t: '讓局長去，我不出席', m: 'credit', push: 2, pop: -3, credit: ['dir', 5], voice: ['脆', '市長連說明會都不敢來？'], react: ['dir', '我……會努力。'] } }),
+    () => ({ who: 'chief', text: '都發局說都市計畫變更要再開一次委員會，環評委員說要補噪音模擬。',
+      L: { t: '兩個委員會我親自去拜託', m: 'self', push: 1, mood: { chief: 1 }, react: ['chief', '市長要親自去？……好。'] },
+      R: { t: '下個月就要通過', m: 'press', push: 2, mood: { chief: -1, dir: -1 }, react: ['chief', '委員不是我們能決定的……'] } })
+  ],
+  4: [
+    () => ({ who: 'li', text: '要徵收的那幾戶，有一戶是阿伯住了五十年的房子。',
+      L: { t: '依法徵收', m: 'press', push: 2, pop: -3, mood: { li: -2 }, voice: ['脆', '強拆阿伯的房子？這就是市府？'], react: ['li', '依法？好，你給我記住。'] },
+      R: { t: '我去阿伯家坐坐', m: 'self', push: 1, pop: 2, mood: { li: 1 }, voice: ['脆', '市長去阿伯家吃飯的影片好暖'], react: ['li', '阿伯說要再想想，但他煮了湯給你。'] } }),
+    () => ({ who: 'dir', text: '有一塊是國營事業的地，他們說要再研議。',
+      L: { t: '你去喬，功勞算你', m: 'credit', push: 2, credit: ['dir', 10], mood: { dir: 1 }, react: ['dir', '交給我，我學長在那邊。'] },
+      R: { t: '請中央協調', m: 'process', push: 1, react: ['central', '我們會轉請相關單位研議。'] } })
+  ],
+  5: [
+    () => ({ who: 'coun', text: '捷運預算要過，我選區的活動中心也要排進去喔。',
+      L: { t: '可以，一起排', m: 'trade', push: 2, debt: 'coun', mood: { coun: 1 }, react: ['coun', '市長爽快！'] },
+      R: { t: '捷運是捷運，活動中心另案', m: 'process', push: 1, mood: { coun: -1 }, react: ['coun', '那我們就……慢慢審。'] } }),
+    () => ({ who: 'dir', text: '第一次招標流標，沒有廠商來投。料工都在漲。',
+      L: { t: '提高預算再招', m: 'concede', push: 2, pop: -1, voice: ['脆', '又追加預算？'], react: ['fin', '錢從哪裡來，我再想辦法。'] },
+      R: { t: '拆成小標案再招', m: 'process', push: 1, react: ['chief', '拆標要重新審，又是幾個月。'] } })
+  ],
+  6: [
+    () => ({ who: 'dir', text: '動工典禮，誰站中間？', final: 1,
+      L: { t: '我。這是我的支票', m: 'self', push: 0, pop: 2, mood: { dir: -1, coun: -1 }, react: ['dir', '（站到了最邊邊）'] },
+      R: { t: '局長和議員站中間', m: 'credit', push: 0, credit: ['dir', 10], mood: { dir: 1, coun: 1 }, react: ['coun', '這個鏡頭好！'] } })
+  ]
+};
+// 被施壓過的人換一句話（記得你）
+function memoryCard(st) {
+  const m = S.mood;
+  if (st === 1 && S.pressed.chief && !S.seen.mem1) { S.seen.mem1 = 1; return { who: 'chief', text: '上次市長要日期，我們排好了：交通部明年第三季審。',
+    L: { t: '明年第一季，不然換人', m: 'press', push: 2, mood: { chief: -1 }, react: ['chief', '（默默記下）'] },
+    R: { t: '中間能先做什麼？', m: 'process', push: 1, mood: { chief: 1 }, react: ['chief', '我回去研究看看。'] } }; }
+  if (m.dir <= -1 && st >= 2 && !S.seen.memDir) { S.seen.memDir = 1; return { who: 'dir', text: '這個……我最近比較忙。（他在準備立委初選）',
+    L: { t: '這是市長交辦', m: 'press', push: 1, mood: { dir: -1 }, react: ['dir', '（回去就請了兩天假）'] },
+    R: { t: '做好了，記者會你站中間', m: 'credit', push: 2, credit: ['dir', 15], mood: { dir: 2 }, react: ['dir', '我突然有空了！'] } }; }
+  if (m.li <= -1 && st === 3 && !S.seen.memLi) { S.seen.memLi = 1; return { who: 'li', text: '上次的事我還記得。說明會，我帶五百人去。',
+    L: { t: '親自到場被罵', m: 'self', push: 1, mood: { li: 1 }, pop: 1, react: ['li', '……至少你有來。'] },
+    R: { t: '說明會改成線上辦', m: 'press', push: 2, mood: { li: -2 }, pop: -2, voice: ['脆', '線上說明會？關麥克風那種？'], react: ['li', '好啊，你給我記住。'] } }; }
+  if (m.coun <= -1 && st === 5 && !S.seen.memCoun) { S.seen.memCoun = 1; return { who: 'coun', text: '上次你不給面子，捷運預算先凍結三成。',
+    L: { t: '活動中心也排進去', m: 'trade', push: 2, debt: 'coun', react: ['coun', '這樣就對了。'] },
+    R: { t: '找議長出面', m: 'press', push: 2, mood: { coun: -2 }, react: ['coun', '找議長？我們走著瞧。'] } }; }
+  return null;
+}
+function stageCard() {
+  const st = S.stage;
+  const mc = memoryCard(st); if (mc) return mc;
+  const arr = SC[st]; const v = S.visits[st] || 0; S.visits[st] = v + 1;
+  return arr[v % arr.length]();
+}
+// 插進來的事：欠的要還、不爽的消極、挺你的幫你
+function eventCard() {
+  const m = S.mood, d = S.debt, c = S.credit, ev = [];
+  if (d.coun && !S.seen.evCoun && S.n - S.debtAt.coun >= 3) ev.push({ tag: 'evCoun', who: 'coun', text: '活動中心呢？地方在問了。', ev: 1,
+    L: { t: '挪捷運的錢先做', m: 'concede', cut: 1, clear: 'coun', react: ['coun', '市長講信用。'] },
+    R: { t: '再等等', m: 'press', mood: { coun: -2 }, react: ['coun', '好，我記住了。'] } });
+  if (d.li && !S.seen.evLi && S.n - S.debtAt.li >= 3) ev.push({ tag: 'evLi', who: 'li', text: '出口要開在市場前，你說的。設計圖呢？', ev: 1,
+    L: { t: '改設計', m: 'concede', push: -1, clear: 'li', react: ['li', '這才像話。（設計重畫，進度退一格）'] },
+    R: { t: '技術上做不到', m: 'press', mood: { li: -2 }, pop: -1, react: ['li', '技術上？選舉時你怎麼不說？'] } });
+  if (c.dir >= 20 && !S.seen.evDir && S.n > 5) ev.push({ tag: 'evDir', who: 'dir', text: '市長，捷運的臉書可以讓我發嗎？', ev: 1,
+    L: { t: '好，你發', m: 'credit', credit: ['dir', 15], mood: { dir: 1 }, react: ['dir', '「我一手推動的捷運」，按讚！'] },
+    R: { t: '市府統一發', m: 'press', mood: { dir: -2 }, react: ['dir', '……了解。'] } });
+  if (m.chief <= -2 && !S.seen.evChief) ev.push({ tag: 'evChief', who: 'chief', text: '依法行政，這份要再會辦交通部、都發局、環保局、文化局、主計處。', ev: 1,
+    L: { t: '我親自打給每個局長', m: 'self', mood: { chief: -1 }, react: ['chief', '……市長好拚。'] },
+    R: { t: '好吧，照規矩', m: 'process', back: 1, mood: { chief: 1 }, react: ['chief', '謝謝市長體諒。'] } });
+  if (m.chief >= 2 && !S.seen.evChiefGood) ev.push({ tag: 'evChiefGood', who: 'chief', text: '市長，我加班把會辦單先跑完了。', ev: 1,
+    L: { t: '謝謝老陳', m: 'process', push: 2, react: ['chief', '應該的。（第一次看到他笑）'] },
+    R: { t: '請全科吃便當', m: 'process', push: 2, mood: { chief: 1 }, react: ['chief', '大家都說市長人不錯。'] } });
+  if (m.li >= 2 && !S.seen.evLiGood && S.stage >= 3) ev.push({ tag: 'evLiGood', who: 'li', text: '里民我幫你講好了，說明會不會鬧。', ev: 1,
+    L: { t: '謝謝阿雪姨', m: 'process', push: 1, pop: 1, react: ['li', '你人不錯，我才幫你。'] },
+    R: { t: '下次里民活動我一定到', m: 'trade', push: 2, debt: 'li', react: ['li', '說好囉。'] } });
+  if (S.pop <= 30 && !S.seen.evRecall) ev.push({ tag: 'evRecall', who: 'coun', text: '有人在街頭擺攤連署罷免你了，我要不要幫你說話？', ev: 1,
+    L: { t: '麻煩你了', m: 'trade', debt: 'coun', pop: 4, react: ['coun', '欠我一次喔。'] },
+    R: { t: '我自己出來道歉', m: 'self', pop: 6, push: -1, voice: ['脆', '市長終於出來講話了'], react: ['dir', '那捷運的會先延後？'] } });
+  return ev.length && Math.random() < .7 ? pick(ev) : null;
+}
+function nextCard() {
+  if (S.stage >= 6 && S.seen.final) return null;
+  const e = S.last && !S.last.ev ? eventCard() : null;
+  return e || stageCard();
+}
+
+// ---------- 畫面 ----------
+const face = k => ART + WHO(k).img;
+function tags(k) { const t = []; if (S.debt[k]) t.push('🤝欠'); if (S.mood[k] <= -2) t.push('😠記恨'); if ((S.credit[k] || 0) >= 20) t.push('🎖️搶功'); if (S.mood[k] >= 2) t.push('💚挺你'); return t.join(' '); }
+function topBar() {
+  const st = S.stage;
+  return `<div class="promise"><div class="t"><span>📜 支票：${LINES.metro.n} ${S.stations} 站</span><span>${when()}</span></div>
+    <div class="stage" id="stg">${st >= 6 ? '🚧 動工' : '⏳ ' + STAGES[st]}<span class="pd">${st < 6 ? `這關推了 ${'●'.repeat(S.push)}${'○'.repeat(need() - S.push)}` : ''}</span></div>
+    <div class="ladder">${STAGES.slice(0, 7).map((x, i) => `<i class="${i < st ? 'ok' : i === st ? 'now' : ''}"></i>`).join('')}</div>
+    <div class="next">${st < 6 ? `下一關：${STAGES[st + 1]}` : '只差典禮了'}</div>
+    <div class="pop">😊 民意 <i><b style="width:${S.pop}%;background:${S.pop < 30 ? 'var(--red)' : S.pop < 45 ? 'var(--gold)' : 'var(--green)'}"></b></i> ${Math.round(S.pop)}</div></div>
+    <div class="people">${Object.keys(P).map(k => `<div class="pp ${S.mood[k] >= 2 ? 'g' : S.mood[k] <= -2 ? 'r' : ''}" data-p="${k}"><img src="${face(k)}" alt=""><span class="mf">${S.mood[k] >= 1 ? '🙂' : S.mood[k] <= -1 ? '😒' : ''}</span><br>${P[k].n}<span class="tg">${tags(k)}</span></div>`).join('')}</div>`;
+}
+let CUR = null;
+function render() {
+  if (S.n >= TURNS) return ending();
+  const c = CUR = nextCard();
+  if (!c) return ending();
+  if (c.tag) S.seen[c.tag] = 1;
+  if (c.final) S.seen.final = 1;
+  const optB = o => `${o.t}<small>${METHOD[o.m]}${o.cut ? '・少一站' : ''}${o.credit ? '・功勞分給' + WHO(o.credit[0]).n : ''}${o.debt ? '・欠' + WHO(o.debt).n + '人情' : ''}${o.back ? '・退回上一關' : ''}${o.pop > 0 ? '・民意＋' : o.pop < 0 ? '・民意－' : ''}</small>`;
+  app.innerHTML = `${topBar()}
+    <div class="stagebox"><div class="cardx ${c.ev ? 'ev' : ''}" id="card"><span class="choice r">${c.R.t}</span><span class="choice l">${c.L.t}</span>
+      <img src="${face(c.who)}" alt=""><div class="who">${WHO(c.who).n} <small>${WHO(c.who).role}</small></div><div class="txt">${c.text}</div></div></div>
+    <div class="btns"><button id="L">← ${optB(c.L)}</button><button id="R">${optB(c.R)} →</button></div>
+    <div class="muted center" style="margin-top:6px">${S.n === 0 && S.term === 1 ? '往左或往右滑，或按按鈕。每種做法都有代價。' : '點上面的人，可以看他在想什麼'}</div>`;
+  $('#L').onclick = () => choose('L'); $('#R').onclick = () => choose('R');
+  document.querySelectorAll('[data-p]').forEach(b => b.onclick = () => peek(b.dataset.p));
+  drag($('#card'));
+}
+function peek(k) {
+  const d = document.createElement('div'); d.className = 'react'; d.innerHTML = `<img src="${face(k)}" alt=""><span><b>${P[k].n}</b>：${P[k].mind}${S.mood[k] <= -2 ? '。他現在很不爽你。' : S.mood[k] >= 2 ? '。他現在挺你。' : ''}</span>`;
+  document.body.appendChild(d); setTimeout(() => d.remove(), 1800);
+}
+function drag(el) {
+  let x0 = null, dx = 0;
+  const cl = el.querySelector('.choice.l'), cr = el.querySelector('.choice.r');
+  el.onpointerdown = e => { x0 = e.clientX; dx = 0; el.classList.add('drag'); el.setPointerCapture(e.pointerId); };
+  el.onpointermove = e => { if (x0 === null) return; dx = e.clientX - x0; el.style.transform = `translateX(${dx}px) rotate(${dx / 18}deg)`; cr.style.opacity = dx > 25 ? 1 : 0; cl.style.opacity = dx < -25 ? 1 : 0; };
+  el.onpointerup = el.onpointercancel = () => { if (x0 === null) return; x0 = null; el.classList.remove('drag'); if (dx > 90) return choose('R'); if (dx < -90) return choose('L'); el.style.transform = ''; cr.style.opacity = 0; cl.style.opacity = 0; };
+}
+const VOICES = { stuck: ['捷運到底要研究幾年？', '說好的捷運呢？', '我小孩都上國中了，還在研議中', '1999 打過去說「已列管」'], up: ['欸，捷運好像真的有在動', '終於過了一關', '進度出來了，先不要高興太早'] };
+let busy = false;
+function choose(side) {
+  if (busy || !CUR) return; busy = true;
+  const c = CUR, o = c[side];
+  const el = $('#card'); el.classList.add('out'); el.style.transform = `translateX(${side === 'L' ? -420 : 420}px) rotate(${side === 'L' ? -20 : 20}deg)`;
+  S.n++; S.last = c;
+  if (o.mood) for (const k in o.mood) S.mood[k] = Math.max(-3, Math.min(3, S.mood[k] + o.mood[k]));
+  if (o.credit) S.credit[o.credit[0]] = (S.credit[o.credit[0]] || 0) + o.credit[1];
+  if (o.debt) { S.debt[o.debt]++; S.debtAt[o.debt] = S.n; }
+  if (o.clear) S.debt[o.clear] = 0;
+  if (o.cut) S.stations = Math.max(2, S.stations - o.cut);
+  if (o.pop) S.pop += o.pop * 2;
+  if (o.m === 'press' && !c.ev) S.pressed[c.who] = 1;
+  let push = o.push || 0, msg = null, cls = 'mid';
+  if (push > 0 && P[c.who] && S.mood[c.who] <= -2 && !c.ev && Math.random() < .5) { push = Math.max(0, push - 1); msg = `${P[c.who].n}消極配合中……`; }
+  const before = S.stage;
+  if (o.back && S.stage > 0) { S.stage--; S.push = 0; msg = `↩️ 退回：${STAGES[S.stage]}`; cls = 'back'; }
+  else if (push < 0) { S.push = Math.max(0, S.push + push); msg = '↩️ 進度退了一格'; cls = 'back'; }
+  else if (push > 0 && S.stage < 6) {
+    S.push += push;
+    if (S.push >= need()) { S.stage++; S.push = 0; msg = S.stage >= 6 ? '🚧 可以動工了！' : `✅ ${STAGES[S.stage - 1]} → ${STAGES[S.stage]}`; cls = 'up'; }
+    else if (!msg) msg = '還在' + STAGES[S.stage] + '……';
+  } else if (!msg && S.stage < 6 && !c.final) msg = '還在' + STAGES[S.stage] + '……';
+  // 公部門的日常：推了，但又被退回補件
+  if (!c.ev && cls === 'mid' && push > 0 && S.stage >= 1 && S.stage < 6 && Math.random() < .2) { S.push = Math.max(0, S.push - 1); msg = pick(['📎 會辦單少蓋一個章，退回補件', '📎 承辦人請產假，案子交接中', '📎 主計處說預算科目不對', '📎 審查委員換人，要重新簡報']); }
+  if (!c.ev && cls !== 'up' && S.stage >= 2 && S.stage < 6 && S.mood.chief <= -1 && Math.random() < .15) { S.stage--; S.push = 0; msg = `↩️ 公文被退回：${STAGES[S.stage]}`; cls = 'back'; }
+  // 民意：卡太久，大家會問
+  S.stuck = S.stage > before ? 0 : S.stuck + 1;
+  let voice = o.voice;
+  if (S.stage > before) { S.pop += 3; voice = voice || ['脆', pick(VOICES.up)]; }
+  else if (S.stuck >= 4 && S.stuck % 2 === 0) { S.pop -= 3; voice = voice || ['1999', pick(VOICES.stuck)]; }
+  S.pop = Math.max(0, Math.min(100, S.pop));
+  // 第一條主線推到核定，解鎖第三條（這一版先顯示）
+  if (!S.unlocked && S.stage >= 2) { S.unlocked = true; setTimeout(() => { const t = document.createElement('div'); t.className = 'toast up'; t.textContent = '🔓 捷運核定了！解鎖第三條主線（下一版開放）'; document.body.appendChild(t); setTimeout(() => t.remove(), 1800); }, 900); }
+  const [rk, rt] = o.react || [c.who, '……'];
+  const r = document.createElement('div'); r.className = 'react'; r.innerHTML = `<img src="${face(rk)}" alt=""><span><b>${WHO(rk).n}</b>：${rt}</span>`; document.body.appendChild(r);
+  if (msg) { const t = document.createElement('div'); t.className = 'toast ' + cls; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 1800); }
+  if (voice) { const v = document.createElement('div'); v.className = 'voice'; v.innerHTML = `<b>${voice[0] === '1999' ? '📞 1999 陳情' : '🧵 脆上 ' + pick(USERS)}</b>${voice[1]}`; document.body.appendChild(v); setTimeout(() => v.remove(), 2200); }
+  setTimeout(() => { r.remove(); busy = false; if (c.final) return ending(); render(); const sg = $('#stg'); if (sg && cls !== 'mid') sg.classList.add(cls); Object.keys(o.mood || {}).forEach(k => { const x = document.querySelector(`[data-p="${k}"]`); if (x) x.classList.add('hit'); }); }, 1400);
+}
+
+// ---------- 結局：市長交棒 ----------
+function ending() {
+  CUR = null;
+  const done = S.stage >= 6, reached = S.stage;
+  // 剩下的關卡真實大約還要幾年 → 第幾任市長剪綵
+  const left = YEARS_LEFT.slice(reached).reduce((a, b) => a + b, 0) + (done ? 0 : 0.5);
+  const yrs = Math.round(left), mayors = Math.max(1, Math.ceil(yrs / 4));
+  const owe = Object.keys(S.debt).filter(k => S.debt[k]), hate = Object.keys(S.mood).filter(k => S.mood[k] <= -2), fans = Object.keys(S.mood).filter(k => S.mood[k] >= 2);
+  const rank = ['你之後的下一任', '你之後第二任', '你之後第三任', '你之後第四任', '你之後第五任'][Math.min(4, mayors - 1)];
+  const dirBig = (S.credit.dir || 0) >= 30;
+  let cm;
+  if (reached <= 1) cm = `四年過去了，捷運還在「${STAGES[reached]}」。`;
+  else if (!done) cm = `捷運卡在「${STAGES[reached]}」。下一任市長上任第一天說：「我會繼續推動。」`;
+  else if (S.stations <= 3) cm = `捷運動工了，只是從 5 站變 ${S.stations} 站。`;
+  else if (owe.length >= 2) cm = '捷運動工了，市長欠了一屁股人情。';
+  else if (S.pop < 40) cm = '捷運動工了，但大家只記得施工圍籬。';
+  else cm = '說真的，這張支票有在動。';
+  const line = Array.from({ length: 5 }, (_, i) => `${i ? `<i class="${i >= S.stations ? 'cut' : ''}"></i>` : ''}<b class="${i >= S.stations ? 'cut' : ''}"></b>`).join('');
+  const canRun = S.pop >= 45 && S.term === 1;
+  SV.best = Math.max(SV.best || 0, reached); save();
+  app.innerHTML = `<div class="end center"><div class="muted">📜 支票：${LINES.metro.promise}</div><div class="big">${done ? '🚧 你任內動工了！' : `⏳ 你推到「${STAGES[reached]}」`}</div>
+    <div class="steps">${STAGES.map((x, i) => `<div class="${i < reached ? 'ok' : i === reached ? 'now' : 'later'}">${i < reached ? '✅' : i === reached ? (done && i === 6 ? '🚧' : '⏳') : '⬜'} ${x}${i === reached && !done ? '（你卸任時卡在這裡）' : ''}</div>`).join('')}</div>
+    <div class="line">${line}</div><div class="muted">${S.stations < 5 ? `原本答應 5 站，現在剩 ${S.stations} 站` : '5 站一站都沒少'}</div>
+    <div class="timeline">🗓️ 你卸任後 ${yrs} 年，捷運通車。<br>剪綵的是${rank}市長。他說：「感謝歷任市長的努力。」<br>${dirBig ? '站在他旁邊的，是已經當上立委的高局長。' : '你在台下第三排。'}</div>
+    <div class="rows" style="margin-top:8px">
+      <div>😊 卸任時民意：${Math.round(S.pop)}</div>
+      <div>🤝 你欠誰：${owe.length ? owe.map(k => P[k].n).join('、') : '誰都不欠'}</div>
+      <div>😠 誰記恨你：${hate.length ? hate.map(k => P[k].n).join('、') : '沒有人'}</div>
+      <div>💚 誰挺你：${fans.length ? fans.map(k => P[k].n).join('、') : '沒有人特別挺你'}</div></div>
+    <div class="post"><b>🧵 脆上的評語</b>${cm}</div>
+    <div class="src">真實世界的參考：一條捷運從核定到通車常常超過十年（例：某條捷運 2010 年核定，原訂 2018 年完工，因用地、都市計畫變更、財務計畫退件一路延後）。</div>
+    <div class="muted" style="margin-top:8px">《我推的市長》試玩・摩卡與貓貓小隊</div></div>
+    ${canRun ? '<button class="btn" id="run">要連任嗎？（再推四年）</button>' : ''}
+    <button class="btn ${canRun ? 'ghost' : ''}" id="again">再當一次市長</button>`;
+  if (canRun) $('#run').onclick = () => { const keep = JSON.parse(JSON.stringify(S)); newGame(S.lines, keep); render(); };
+  $('#again').onclick = () => pickLines();
+}
+
+// ---------- 開場：你選上市長了，選 2 條最重視的 ----------
+function pickLines() {
+  const sel = ['metro'];
+  const draw = () => {
+    app.innerHTML = `<h2 style="margin-top:18px">你選上市長了。</h2><p class="muted">競選時你答應了很多事。四年很短，先挑 <b>2 條</b>你最想兌現的支票。<br>其中一條推到「中央核定」，就能再多扛一條。</p>
+      <div class="lines">${Object.keys(LINES).map(k => `<button class="ln ${sel.includes(k) ? 'on' : ''}" data-l="${k}" ${LINES[k].open ? '' : 'disabled'}>${LINES[k].e} ${LINES[k].n}<small>「${LINES[k].promise}」${LINES[k].open ? '' : '<br>🔒 下一版開放'}</small></button>`).join('')}</div>
+      <p class="muted center">這一版先開放「捷運延伸線」一條，其他主線之後一條一條加。</p>
+      <button class="btn" id="go">上任 →</button>`;
+    document.querySelectorAll('[data-l]').forEach(b => b.onclick = () => { const k = b.dataset.l; if (!LINES[k].open) return; draw(); });
+    $('#go').onclick = () => { newGame(sel.slice()); render(); };
+  };
+  draw();
+}
+function title() {
+  app.innerHTML = `<h1>📜 一張支票</h1><p class="center muted">《我推的市長》試玩 v2・約 3 分鐘</p>
+    <div class="card"><p><b>你選上市長了。</b></p><p>你以為當上市長，說一句就會動。</p><p>其實每一條路都要過好幾關：研究、中央核定、規劃、環評、用地、預算……局長、科長、議員、里長，每個人都有自己的盤算。</p></div>
+    <div class="people" style="margin:14px 0">${Object.keys(P).map(k => `<div class="pp"><img src="${face(k)}" alt=""><br>${P[k].n}<br><span class="muted" style="font-size:10px">${P[k].role}</span></div>`).join('')}</div>
+    <button class="btn" id="go">上任 →</button><p class="center muted">人物、城市全部虛構・摩卡與貓貓小隊<br><a href="v1.html" style="color:inherit">切片 v1</a></p>`;
+  $('#go').onclick = pickLines;
+}
+document.addEventListener('keydown', e => { if (!CUR) return; if (e.key === 'ArrowLeft') choose('L'); if (e.key === 'ArrowRight') choose('R'); });
+title();
+</script>
+</body>
+</html>
