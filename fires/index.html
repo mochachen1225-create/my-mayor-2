@@ -3,353 +3,406 @@
 <head>
 <meta charset="utf-8">
 <meta http-equiv="Cache-Control" content="no-cache">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<title>災難看板（試玩版）</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>修城市（試玩版）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Huninn&display=swap" rel="stylesheet">
 <style>
-:root { --bg: #f6efe0; --ink: #2b2f36; --muted: #7a7466; --line: #e4d9c3; --grn: #2e8b57; --yel: #e0a526; --red: #c0392b; }
+/* 配色、字型延續選戰篇 */
+:root { --paper: #faf8f5; --ink: #2a2a2a; --muted: #7a7a7a; --room: #2b2f36; --red: #d93636; --gold: #e0a526; --green: #2e9e6a; --line: #e4e0da; --road: #d9d4cb; }
+@font-face { font-family: 'ColorEmoji'; src: local('Apple Color Emoji'), local('Segoe UI Emoji'), local('Noto Color Emoji'); unicode-range: U+1F000-1FAFF, U+2600-27BF, U+2B00-2BFF, U+FE0F; }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif; touch-action: manipulation; }
-#app { max-width: 480px; margin: 0 auto; padding: 10px 12px 24px; min-height: 100vh; }
-h1 { text-align: center; font-size: 28px; margin: 30px 0 6px; }
-h2 { font-size: 20px; margin: 8px 0; }
+html, body { margin: 0; background: #1d2026; color: var(--ink); font-family: 'ColorEmoji', 'Huninn', 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif; }
+#app { max-width: 480px; margin: 0 auto; min-height: 100vh; background: var(--paper); padding: 10px 12px 90px; position: relative; }
+button { font-family: inherit; cursor: pointer; }
+h1 { text-align: center; margin: 24px 0 4px; font-size: 30px; }
+h2 { margin: 6px 0; font-size: 20px; }
 .muted { color: var(--muted); font-size: 13px; }
 .center { text-align: center; }
-.btn { display: block; width: 100%; border: 0; border-radius: 999px; padding: 14px; margin: 10px 0; font-size: 17px; font-weight: 700; background: var(--ink); color: #fff; }
-.btn.ghost { background: transparent; color: var(--ink); border: 2px solid var(--ink); }
-.card { background: #fffaf0; border: 2px solid var(--line); border-radius: 16px; padding: 12px; margin: 10px 0; }
+.btn { display: block; width: 100%; border: 0; border-radius: 999px; padding: 14px; margin: 10px 0; font-size: 17px; font-weight: 700; background: var(--room); color: #fff; }
+.btn.ghost { background: transparent; color: var(--ink); border: 2px solid var(--room); }
+.btn:disabled { opacity: .4; }
+.card { background: #fff; border: 2px solid var(--line); border-radius: 16px; padding: 12px; margin: 10px 0; }
+.face { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; background: #f3e6d0; }
+.face.s { width: 34px; height: 34px; }
 /* 頂部 */
-.top { position: sticky; top: 0; z-index: 5; background: var(--bg); padding-bottom: 6px; }
+.top { position: sticky; top: 0; z-index: 5; background: var(--paper); padding: 4px 0 6px; }
 .row { display: flex; align-items: center; gap: 8px; }
-.round { font-weight: 800; }
-.clock { margin-left: auto; font-weight: 800; font-size: 20px; }
-.clock.low { color: var(--red); }
-.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 6px; }
-.st { font-size: 12px; text-align: center; }
-.st .bar { height: 7px; background: #e4d9c3; border-radius: 4px; overflow: hidden; margin-top: 2px; }
-.st .bar div { height: 100%; transition: width .3s; }
-.hint { background: var(--ink); color: #fff; border-radius: 10px; padding: 7px 10px; font-size: 13px; font-weight: 700; margin-top: 6px; }
-/* 火 */
-.fires { display: flex; flex-direction: column; gap: 8px; margin: 8px 0 120px; }
-.fire { position: relative; background: #fff; border: 2px solid #f0c9b8; border-radius: 14px; padding: 8px 10px; transition: transform .1s; }
-.fire.lv2 { border-color: #e98c6a; background: #fff4ee; }
-.fire.lv3 { border-color: var(--red); background: #ffe9e3; animation: pulse 1s infinite; }
-.fire.pledge { border-color: #9fc6a8; background: #f1faf3; }
-.fire.drop { transform: scale(1.03); box-shadow: 0 0 0 3px #ffd166; }
-.fire.done { opacity: .5; }
-@keyframes pulse { 50% { box-shadow: 0 0 0 3px rgba(192, 57, 43, .25); } }
-.fire .t { font-weight: 700; font-size: 15px; }
-.fire .need { font-size: 11px; color: var(--muted); }
-.meters { display: flex; gap: 6px; margin-top: 5px; align-items: center; font-size: 11px; color: var(--muted); }
-.m { flex: 1; height: 6px; background: #eee; border-radius: 3px; overflow: hidden; }
-.m div { height: 100%; }
-.m.heat div { background: #e98c6a; }
-.m.time div { background: #7a6ba8; }
-.m.prog div { background: var(--grn); }
-.slots { display: flex; gap: 4px; margin-top: 5px; min-height: 30px; }
-.chip { display: inline-flex; align-items: center; gap: 3px; background: #f3e6d0; border-radius: 999px; padding: 3px 8px; font-size: 12px; }
-/* 團隊 */
-.team { position: fixed; left: 0; right: 0; bottom: 0; background: #fffaf0; border-top: 2px solid var(--line); padding: 8px 10px 12px; z-index: 6; }
-.team .in { max-width: 480px; margin: 0 auto; }
-.people { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
-.p { border: 2px solid var(--line); background: #fff; border-radius: 12px; padding: 4px 2px; text-align: center; font-size: 22px; touch-action: none; user-select: none; }
-.p small { display: block; font-size: 9px; color: var(--muted); line-height: 1.2; }
-.p .sp { font-size: 9px; background: #e3e9f7; color: #33508f; border-radius: 6px; padding: 0 3px; }
-.p.sel { border-color: var(--yel); background: #fff6df; }
-.p.busy { opacity: .55; }
-.p.off { opacity: .3; }
-.locked { font-size: 10px; color: #a39b8a; margin-top: 4px; text-align: center; }
-.ghost { position: fixed; pointer-events: none; font-size: 30px; z-index: 50; transform: translate(-50%, -50%); }
-.toast { position: fixed; left: 50%; top: 90px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 8px 14px; border-radius: 12px; font-size: 13px; z-index: 40; max-width: 90vw; animation: fade 2.6s forwards; }
-@keyframes fade { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
-/* 結果 */
-.story { font-size: 17px; line-height: 1.6; font-weight: 700; }
-.log div { font-size: 14px; padding: 3px 0; }
-.post { border-top: 1px solid #f0e8d8; padding: 6px 0; font-size: 14px; }
+.month { font-weight: 800; font-size: 16px; }
+.ap { margin-left: auto; font-size: 18px; letter-spacing: 2px; }
+.bars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 4px; }
+.bar { font-size: 12px; }
+.bar i { display: block; height: 7px; border-radius: 4px; background: #eee; overflow: hidden; margin-top: 2px; }
+.bar i b { display: block; height: 100%; }
+.hint { background: var(--room); color: #fff; border-radius: 10px; padding: 7px 10px; font-size: 13px; font-weight: 700; margin-top: 6px; }
+.hint.tut { background: var(--gold); color: #2a2a2a; animation: bob 1.2s infinite; }
+@keyframes bob { 50% { transform: translateY(-2px); } }
+/* N 城地圖：城市街廓＋道路（不是島嶼） */
+.map { background: var(--road); border-radius: 18px; padding: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; position: relative; }
+.map::before { content: ''; position: absolute; left: 50%; top: 6px; bottom: 6px; width: 4px; margin-left: -2px; background: repeating-linear-gradient(#fff 0 8px, transparent 8px 16px); opacity: .7; }
+.dist { border-radius: 14px; padding: 6px; min-height: 104px; position: relative; transition: background .6s, filter .6s; }
+.dist .dn { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
+.dist .dn small { font-weight: 400; color: var(--muted); margin-left: 4px; }
+.sites { display: flex; flex-wrap: wrap; gap: 5px; }
+.site { position: relative; width: 62px; border: 2px solid rgba(0,0,0,.08); border-radius: 12px; background: rgba(255,255,255,.75); padding: 3px 2px; text-align: center; font-size: 24px; line-height: 1.1; }
+.site small { display: block; font-size: 9px; color: #555; line-height: 1.15; margin-top: 2px; }
+.site.broken { filter: grayscale(.85) contrast(.9); background: rgba(255,255,255,.5); }
+.site.broken::after { content: '🚧'; position: absolute; right: -4px; top: -6px; font-size: 14px; filter: none; }
+.site.rot { filter: grayscale(1) brightness(.85); }
+.site.rot::after { content: '💢'; }
+.site.work { background: #fff6df; border-color: var(--gold); }
+.site.work::after { content: '🏗️'; position: absolute; right: -4px; top: -6px; font-size: 14px; }
+.site.stuck::after { content: '⛔'; position: absolute; right: -4px; top: -6px; font-size: 14px; }
+.site.fixed { background: #e3f6ea; border-color: var(--green); animation: shine 1.2s; }
+.site.fixed::after { content: '✨'; position: absolute; right: -4px; top: -6px; font-size: 14px; }
+.site.botched { background: #f6efe0; border-color: #c9b38a; }
+.site.botched::after { content: '🩹'; position: absolute; right: -4px; top: -6px; font-size: 14px; }
+.site.tgt { box-shadow: 0 0 0 4px var(--gold); animation: bob 1s infinite; }
+.prog { height: 4px; background: #eee; border-radius: 2px; margin-top: 2px; overflow: hidden; }
+.prog b { display: block; height: 100%; background: var(--gold); }
+@keyframes shine { 0% { transform: scale(.8); } 60% { transform: scale(1.12); } 100% { transform: scale(1); } }
+/* 底部 */
+.dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: #fff; border-top: 2px solid var(--line); padding: 8px 12px calc(10px + env(safe-area-inset-bottom)); }
+.dock .in { max-width: 456px; margin: 0 auto; display: flex; gap: 8px; align-items: center; }
+.team { display: flex; gap: 2px; flex: 1; overflow-x: auto; }
+.mem { text-align: center; font-size: 9px; width: 42px; flex: none; border: 0; background: none; padding: 0; color: var(--ink); }
+.mem img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 2px solid transparent; }
+.mem.busy img { border-color: var(--gold); }
+.mem.off img { opacity: .35; }
+.endm { flex: none; border: 0; border-radius: 999px; background: var(--red); color: #fff; font-weight: 700; padding: 12px 14px; font-size: 14px; }
+.endm.tgt { box-shadow: 0 0 0 4px var(--gold); }
+/* 彈出 */
+.sheet { position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,.45); display: flex; align-items: flex-end; justify-content: center; }
+.sheet .box { background: var(--paper); width: 100%; max-width: 480px; border-radius: 20px 20px 0 0; padding: 14px 14px calc(18px + env(safe-area-inset-bottom)); max-height: 85vh; overflow-y: auto; animation: up .25s; }
+@keyframes up { from { transform: translateY(40px); opacity: 0; } }
+.opt { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; border: 2px solid var(--line); background: #fff; border-radius: 14px; padding: 10px 12px; margin: 7px 0; font-size: 15px; color: var(--ink); }
+.opt small { display: block; font-size: 12px; color: var(--muted); }
+.opt:disabled { opacity: .45; }
+.opt.tgt { border-color: var(--gold); box-shadow: 0 0 0 3px #ffe39b; }
+.opt.gray { border-style: dashed; }
+.say { background: #fff; border-radius: 14px; padding: 10px 12px; margin: 8px 0; border-left: 4px solid var(--gold); font-size: 14px; line-height: 1.55; }
+.post { border-top: 1px solid #eee; padding: 6px 0; font-size: 14px; }
 .post b { font-size: 12px; color: #6b5a33; display: block; }
-.delta { font-size: 13px; margin-top: 6px; }
-.delta span { margin-right: 10px; font-weight: 700; }
-.up { color: var(--grn); } .down { color: var(--red); }
-.member { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #f0e8d8; font-size: 14px; }
-.member .e { font-size: 24px; }
-.member .x { margin-left: auto; border: 2px solid var(--red); color: var(--red); background: #fff; border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 700; }
+.news div { font-size: 14px; padding: 4px 0; border-bottom: 1px dashed #eee; }
+.toast { position: fixed; left: 50%; top: 70px; transform: translateX(-50%); background: var(--room); color: #fff; padding: 9px 14px; border-radius: 12px; font-size: 13px; z-index: 30; max-width: 92vw; animation: fade 3s forwards; }
+@keyframes fade { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
 .ending { text-align: center; }
 .ending .big { font-size: 64px; }
+.tri { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 10px 0; }
+.tri div { background: #fff; border: 2px solid var(--line); border-radius: 12px; padding: 8px 4px; font-size: 13px; }
+.tri b { display: block; font-size: 22px; }
 </style>
 </head>
 <body>
 <div id="app"></div>
 <script>
 // ==========================================================
-// 災難看板（試玩版）— 你是剛選上的市長。選上才是災難的開始。
-// 每回合 30 秒：點一個人、再點一團火（或直接拖過去），派人滅火。
+// 修城市（試玩版 0.2）— 你是剛選上的 N 城市長。百廢待舉。
+// 每個月只能做 3 件事，想修的永遠比能做的多。
 // 摩卡與貓貓小隊
 // ==========================================================
 const $ = s => document.querySelector(s), app = $('#app');
-const rnd = n => Math.floor(Math.random() * n), pick = a => a[rnd(a.length)];
-const shuffle = a => a.slice().sort(() => Math.random() - .5);
-const ROUNDS = 8, ROUND_SEC = 30;
-const SPEED = +new URLSearchParams(location.search).get('speed') || 1; // 測試用：?speed=5 讓時間跑快一點
-const DT = 0.1 * SPEED;
-const LABELS = [ '第 1 年・就職', '第 1 年・春', '第 1 年・颱風季', '第 1 年・預算季', '第 2 年', '第 3 年・期中考', '第 4 年・選前半年', '連任前夕' ];
-const SPECS = { eng: '工程', fin: '財務', cou: '議會', med: '媒體', soc: '社福', tra: '交通' };
+const rnd = n => Math.floor(Math.random() * n), pick = a => a[rnd(a.length)], shuffle = a => a.slice().sort(() => Math.random() - .5);
+const TURNS = 16, AP = 3;
+const SPEC = { eng: '工程', fin: '財務', cou: '議會', soc: '社福', tra: '交通', med: '媒體' };
+const label = t => `第 ${Math.ceil(t / 4)} 年・${['1～3', '4～6', '7～9', '10～12'][(t - 1) % 4]} 月`;
 
-// ---------- 火：每一家族有 3 段（沒人管就升級）----------
-// need：需要的專長；heat：要花多少力氣；sec：倒數秒數；fx：滅掉／燒成災難的影響
-const FIRES = [
-  { id: 'metro', e: '🚇', need: 'tra', st: ['捷運延伸線又延期了', '通車典禮取消，紀念商品已經在賣', '議員要求捷運局長下台'] },
-  { id: 'council', e: '🏛️', need: 'cou', st: ['議員在質詢台拍桌', '議會拒審總預算（政見全卡住）', '預算被刪 30 億'], blocks: 1 },
-  { id: 'contract', e: '📜', need: 'fin', st: ['前任簽的十年合約爆了', '廠商說提前解約要賠一大筆', '議員質疑：分手費誰付？'] },
-  { id: 'crisp', e: '🧵', need: 'med', st: ['脆上又在吵', '吵上熱搜第一', '名嘴開始連播三天'] },
-  { id: 'lunch', e: '🍱', need: 'soc', st: ['營養午餐團膳流標', '家長群組炸了', '學生吃泡麵上了新聞'] },
-  { id: 'elder', e: '🧓', need: 'soc', st: ['敬老卡加碼，錢不夠', '長輩在市府門口陳情', '「市長翻臉不認帳」上頭版'] },
-  { id: 'museum', e: '🏛', need: 'fin', st: ['紀念館只剩冷氣在上班', '議員拍影片：上週只來 11 人', '監察院來函'] },
-  { id: 'skywalk', e: '🌉', need: 'eng', st: ['天空步道封閉半年', '工地只有一台怪手在睡覺', '「怪手睡覺」變成迷因'] },
-  { id: 'stadium', e: '🏟️', need: 'eng', st: ['體育場草皮積水', '國際賽要移場', '「丟臉丟到國外」'] },
-  { id: 'app', e: '📱', need: 'med', st: ['發券 App 開放 3 秒就當機', '「市府 App 3 秒當機」上熱搜', '資安專家說：那不是攻擊，是流量'] },
-  { id: 'pole', e: '🪵', need: 'eng', st: ['一根廢棄電線桿，五個單位踢皮球', '里長在臉書幫電線桿慶生', '電線桿上了晚間新聞'] },
-  { id: 'mascot', e: '🧸', need: 'med', st: ['議員舉牌考市長吉祥物名字', '40 多隻吉祥物上新聞', '「市長認不出自己的吉祥物」'] },
-  { id: 'leak', e: '🕵️', need: 'cou', st: ['市政會議內容外流', '前任在臉書評論你們的計畫', '「市府有內鬼」'] },
-  { id: 'concert', e: '🎤', need: 'fin', st: ['場租 0 元的演唱會，門票 3800', '記者算出場租應該多少', '議員：圖利！'] },
-  { id: 'protest', e: '📢', need: 'soc', st: ['里長帶陳情團到市府', '陳情團在大廳打地舖', '陳情變成靜坐'] },
-  { id: 'bus', e: '🚌', need: 'tra', st: ['新公車路線被罵翻', '司機說路線根本開不過去', '公車卡在巷子裡上新聞'] }
+// ---------- N 城地圖：六個區，每區幾個壞掉的地方（台灣市政常見問題的類型）----------
+const DISTRICTS = [
+  { id: 'old', n: '舊城區', c: '#f4d9b8' }, { id: 'river', n: '河濱區', c: '#cfe4f2' },
+  { id: 'tech', n: '科技園區', c: '#dcd6f2' }, { id: 'east', n: '東區商圈', c: '#f6d3d9' },
+  { id: 'hill', n: '山邊住宅區', c: '#d6ecd2' }, { id: 'port', n: '港灣區', c: '#d2ecec' }
 ];
-const SEASON = { 2: { id: 'typhoon', e: '🌀', need: 'eng', st: ['颱風明天到', '颱風假放不放？全市在等', '低窪地區淹水了'], sec: 0.7 }, 3: { id: 'budget', e: '💰', need: 'fin', st: ['預算季：議員排隊要建設', '總預算卡在議會', '預算被刪，局處停擺'] }, 5: { id: 'midterm', e: '🗳️', need: 'cou', st: ['期中考：同黨議員要你站台', '不站台被說不挺自己人', '黨內開始說要換人選'] } };
-const PLEDGES = [ { id: 'housing', e: '🏘️', t: '政見：社會住宅' }, { id: 'busnew', e: '🚌', t: '政見：公車路線大翻新' }, { id: 'daycare', e: '🧸', t: '政見：公共托嬰加倍' }, { id: 'park', e: '🌳', t: '政見：每區一座共融公園' } ];
-
-// ---------- 人：三位副市長＋三位局長，各有專長；真面目隱藏 ----------
-const ROSTER = [
-  { e: '👨‍💼', n: '周副市長', sp: 'cou' }, { e: '👩‍💼', n: '林副市長', sp: 'fin' }, { e: '🧑‍💼', n: '陳副市長', sp: 'soc' },
-  { e: '👷', n: '工務局長', sp: 'eng' }, { e: '🚦', n: '交通局長', sp: 'tra' }, { e: '📣', n: '新聞處長', sp: 'med' }
+// broken／fixed：壞掉和修好的樣子；need：最適合的專長；dur：要幾個月；cost：財政；obs：可能冒出的阻礙
+const SITES = [
+  { id: 'park', d: 'old', b: '🗑️', f: '🌳', bn: '髒亂的公園', fn: '共融公園', need: 'eng', dur: 2, cost: 6, obs: ['protest', 'tender'], tut: 1 },
+  { id: 'market', d: 'old', b: '🏚️', f: '🥬', bn: '漏水的老市場', fn: '新的傳統市場', need: 'soc', dur: 3, cost: 10, obs: ['protest', 'council', 'vendor'] },
+  { id: 'pole', d: 'old', b: '🪵', f: '🚶', bn: '人行道上的廢電線桿', fn: '暢通的人行道', need: 'eng', dur: 2, cost: 3, obs: ['kick', 'protest'] },
+  { id: 'bike', d: 'river', b: '🚧', f: '🚲', bn: '斷掉的河濱自行車道', fn: '串起來的自行車道', need: 'tra', dur: 3, cost: 8, obs: ['tender', 'central'] },
+  { id: 'sky', d: 'river', b: '🌁', f: '🌉', bn: '沒人去的天空步道', fn: '夜間燈光步道', need: 'eng', dur: 3, cost: 9, obs: ['vendorRun', 'council'] },
+  { id: 'lamp', d: 'river', b: '💡', f: '🌟', bn: '暗暗的路燈（十年合約）', fn: '亮起來的路燈', need: 'fin', dur: 2, cost: 8, obs: ['contract'] },
+  { id: 'metro', d: 'tech', b: '🚇', f: '🚄', bn: '延期的捷運延伸線', fn: '通車的捷運', need: 'tra', dur: 5, cost: 18, obs: ['central', 'tender', 'council'] },
+  { id: 'land', d: 'tech', b: '📜', f: '🏢', bn: '綁住的地上權', fn: '大廠進駐', need: 'fin', dur: 3, cost: 14, obs: ['contract', 'council'] },
+  { id: 'dome', d: 'east', b: '🏗️', f: '🏟️', bn: '蓋一半的巨型場館', fn: '完工的巨型場館', need: 'fin', dur: 5, cost: 20, obs: ['contract', 'vendorRun', 'council'], hard: 1 },
+  { id: 'cross', d: 'east', b: '🚦', f: '🛣️', bn: '塞爆的路口', fn: '順暢的路口', need: 'tra', dur: 2, cost: 5, obs: ['protest', 'director'] },
+  { id: 'scooter', d: 'east', b: '🛵', f: '🚸', bn: '被機車佔滿的騎樓', fn: '走得過的騎樓', need: 'cou', dur: 2, cost: 2, obs: ['protest', 'council'] },
+  { id: 'housing', d: 'hill', b: '🏚️', f: '🏘️', bn: '危老公寓', fn: '新的社會住宅', need: 'soc', dur: 4, cost: 16, obs: ['protest', 'council', 'tender'] },
+  { id: 'elder', d: 'hill', b: '🧓', f: '🏡', bn: '沒有長照據點的社區', fn: '長照據點', need: 'soc', dur: 2, cost: 6, obs: ['director', 'council'] },
+  { id: 'lunch', d: 'hill', b: '🍱', f: '🍎', bn: '流標的營養午餐', fn: '每校都有熱騰騰的午餐', need: 'soc', dur: 2, cost: 7, obs: ['tender', 'central'] },
+  { id: 'stadium', d: 'port', b: '🏟️', f: '🏆', bn: '一啟用就積水的體育場', fn: '辦得了國際賽的體育場', need: 'eng', dur: 3, cost: 10, obs: ['vendorRun', 'contract'] },
+  { id: 'museum', d: 'port', b: '🏛️', f: '🎨', bn: '只剩冷氣在上班的紀念館', fn: '熱鬧的青年基地', need: 'med', dur: 2, cost: 7, obs: ['council', 'protest'] }
 ];
-const SPARE = [ { e: '🧓', n: '資深文官', sp: 'cou' }, { e: '🎓', n: '學者局長', sp: 'fin' }, { e: '🙋', n: '新任局長', sp: 'eng' }, { e: '👩‍🔧', n: '鄰市來的局長', sp: 'tra' }, { e: '🗞️', n: '前記者', sp: 'med' }, { e: '🤝', n: '社工出身的局長', sp: 'soc' } ];
-const TRAITS = {
-  good: { w: 34, n: '靠得住', tip: '' },
-  pro: { w: 14, n: '超能幹', tip: '三分鐘就搞定，大家都嚇一跳' },
-  credit: { w: 13, n: '很會搶功', tip: '在記者會上說火是他滅的' },
-  blame: { w: 13, n: '一直推責任', tip: '火燒起來時，說是你交辦不清楚' },
-  image: { w: 13, n: '形象派不做事', tip: '拍了一支影片，火還在燒' },
-  vendor: { w: 13, n: '跟廠商走太近', tip: '被拍到跟廠商吃飯' }
+// 阻礙小事件：每種有兩個解法（一定要花一件事）或先放著
+const OBS = {
+  council: { e: '🏛️', t: '議會不給錢', a: [['去議會協商', { budget: -2 }, 'cou'], ['答應議員的地方建設換預算', { budget: -6, gray: 1 }]] },
+  tender: { e: '📭', t: '招標流標，沒有廠商來', a: [['提高預算重新招標', { budget: -4 }, 'fin'], ['放寬資格再招一次', { pop: -2 }]] },
+  vendorRun: { e: '🏃', t: '得標廠商跑掉了', a: [['解約、重新發包', { budget: -5 }, 'fin'], ['找認識的廠商直接接手', { gray: 1 }]] },
+  contract: { e: '📜', t: '被前任簽的合約綁住', a: [['付錢提前解約', { budget: -8 }, 'fin'], ['跟廠商重新談', {}, 'cou']] },
+  protest: { e: '📢', t: '附近居民和攤商抗議', a: [['開說明會好好溝通', { pop: 1 }, 'soc'], ['先動工再說', { pop: -4 }]] },
+  director: { e: '🙅', t: '局長不配合', a: [['找局長好好談', {}, 'cou'], ['換一位局長', { pop: -3, swap: 1 }]] },
+  central: { e: '🏢', t: '要等中央核定', a: [['去中央跑公文', { }, 'cou'], ['先自己出錢', { budget: -8 }]] },
+  kick: { e: '⚽', t: '五個單位互踢皮球', a: [['把大家叫來當面喬', {}, 'cou'], ['叫工務局先拆再說', { pop: 2, gray: 1 }]] },
+  vendor: { e: '🧾', t: '攤商自治會有意見', a: [['一攤一攤去拜訪', {}, 'soc'], ['給自治會長一點好處', { gray: 1 }]] }
 };
-const pickTrait = () => { const L = Object.entries(TRAITS); let x = Math.random() * L.reduce((a, [, t]) => a + t.w, 0); for (const [k, t] of L) { x -= t.w; if (x < 0) return k; } return 'good'; };
-const mkPerson = (b, i) => ({ id: 'p' + i + '_' + rnd(1e6), ...b, trait: pickTrait(), known: false, on: null, rest: 0 });
+
+// ---------- 團隊：三位副市長＋三位局長（選戰篇的畫風）；個性用了才知道 ----------
+const ROSTER = [
+  { n: '周副市長', img: 'npc_councilor', sp: 'cou' }, { n: '林副市長', img: 'npc_director', sp: 'fin' }, { n: '陳副市長', img: 'npc_volunteer', sp: 'soc' },
+  { n: '工務局長', img: 'npc_staff', sp: 'eng' }, { n: '交通局長', img: 'npc_foreign', sp: 'tra' }, { n: '新聞處長', img: 'npc_reporter', sp: 'med' }
+];
+const SPARE = [ { n: '資深文官', img: 'npc_elder', sp: 'cou' }, { n: '學者局長', img: 'npc_pundit', sp: 'fin' }, { n: '新來的局長', img: 'npc_intern', sp: 'eng' }, { n: '鄰市來的局長', img: 'npc_shady', sp: 'tra' }, { n: '社工出身的局長', img: 'npc_chief', sp: 'soc' }, { n: '前記者', img: 'npc_donor', sp: 'med' } ];
+// 個性：發現的那一刻用一句台詞帶出來
+const PERS = {
+  good: { w: 34, n: '靠得住' },
+  pro: { w: 14, n: '超能幹', line: '「這個我上週就順手處理好了。」' },
+  credit: { w: 13, n: '很會搶功', line: '剪綵時站到你前面：「這是我一手推動的。」' },
+  blame: { w: 13, n: '很會推責任', line: '「這是市長交辦不清楚，不是我們局處的問題。」' },
+  image: { w: 13, n: '只想拍影片', line: '拍了一支工地巡視短片，工地其實沒動。' },
+  vendor: { w: 13, n: '跟廠商很熟', line: '被拍到跟得標廠商吃飯：「只是老朋友啦。」' }
+};
+const pickP = () => { let x = Math.random() * 100; for (const [k, p] of Object.entries(PERS)) { x -= p.w; if (x < 0) return k; } return 'good'; };
+const mk = (b, i) => ({ ...b, id: 'm' + i + rnd(1e6), per: pickP(), known: false, busy: null, off: 0 });
 
 // ---------- 狀態 ----------
-let S = null;
-function newGame() {
-  S = { round: 0, pop: 50, council: 50, budget: 50, team: ROSTER.map(mkPerson), fires: [], log: [], disasters: 0, put: 0, pledgesDone: 0, pledgePool: shuffle(PLEDGES).slice(0, 3), history: [] };
+let S;
+function newGame(tut) {
+  const g = rnd(2) ? 'm' : 'f';
+  S = { t: 1, ap: AP, pop: 50, budget: 60, pocket: 0, heat: 0, caught: false, team: ROSTER.map(mk),
+    sites: SITES.map(s => ({ ...s, st: 'broken', prog: 0, idle: 0, by: null, ob: null, obAge: 0, bribe: false, surface: 0 })),
+    news: [], tut: tut ? 1 : 0, face: `art/${'ABCDEF'[rnd(6)]}_${g}_`, fixedCount: 0 };
+  if (tut) { S.team.find(m => m.sp === 'eng').per = 'good'; }
 }
-const STATS = [ ['pop', '😊 民意'], ['council', '🏛️ 議會'], ['budget', '💰 財政'] ];
 const clamp = v => Math.max(0, Math.min(100, v));
-function addFx(fx, why) { for (const k in fx) S[k] = clamp(S[k] + fx[k]); if (why) S.log.push(why); }
+function fx(o) { for (const k of ['pop', 'budget']) if (o[k]) S[k] = clamp(S[k] + o[k]); if (o.pocket) S.pocket += o.pocket; }
+const site = id => S.sites.find(s => s.id === id), mem = id => S.team.find(m => m.id === id);
+const cityPct = () => Math.round(S.sites.reduce((a, s) => a + (s.st === 'fixed' ? 1 : s.st === 'botched' ? .5 : 0), 0) / S.sites.length * 100);
+function reveal(m) { if (m.known) return ''; m.known = true; return m.per === 'good' ? '' : `😳 ${m.n}：${PERS[m.per].line}<br><small>原來他是「${PERS[m.per].n}」的人。</small>`; }
 
-// ---------- 開火 ----------
-function spawnFire(fam, lvl = 0) {
-  const base = 12 + lvl * 6 + rnd(6);
-  const sec = Math.round((14 + rnd(10)) * (fam.sec || 1));
-  S.fires.push({ uid: 'f' + rnd(1e9), fam, lvl, heat: base, max: base, sec, secMax: sec, done: false });
+// ---------- 教學（第一個月）----------
+const TUT = {
+  1: { hint: '👉 點地圖上閃爍的「髒亂的公園」', tgt: 'site:park' },
+  2: { hint: '👉 選工務局長（⚡專長是工程）', tgt: 'mem-eng' },
+  3: { hint: '👉 選「正常發包」開工', tgt: 'opt:0' },
+  4: { hint: '👉 這個月還能做 2 件事，先按右下角「下個月」看看', tgt: 'end' },
+  5: { hint: '👉 工地冒出阻礙了！點公園處理它', tgt: 'site:park' },
+  6: { hint: '👉 選一個解法（每個解法都要花一件事）', tgt: 'opt:0' },
+  7: { hint: '👉 按「下個月」，看公園完工', tgt: 'end' },
+  8: { hint: '✨ 地圖變漂亮了！之後就交給你了。想修的永遠比能做的多。', tgt: null }
+};
+const tutHint = () => S.tut && TUT[S.tut] ? TUT[S.tut] : null;
+
+// ---------- 主畫面：地圖 ----------
+function bars() {
+  const pct = cityPct();
+  const one = (n, v, max = 100, c) => `<div class="bar">${n} ${Math.round(v)}<i><b style="width:${v / max * 100}%;background:${c || (v < 25 ? 'var(--red)' : v < 45 ? 'var(--gold)' : 'var(--green)')}"></b></i></div>`;
+  return `<div class="bars">${one('😊 民意', S.pop)}${one('💰 財政', S.budget)}${one('🏙️ 城市', pct, 100, '#5b8bd9')}</div>${S.pocket ? `<div class="muted" style="margin-top:3px">🤫 你的口袋：${S.pocket}　${S.heat >= 6 ? '<b style="color:var(--red)">有人在查你了</b>' : ''}</div>` : ''}`;
 }
-function spawnPledge() {
-  const p = S.pledgePool.find(x => !x.done && !S.fires.some(f => f.pledge && f.p.id === x.id));
-  if (!p) return;
-  S.fires.push({ uid: 'g' + rnd(1e9), pledge: true, p, heat: 0, max: 30, prog: 0, done: false });
+function home() {
+  const h = tutHint();
+  const tgt = h && h.tgt;
+  app.innerHTML = `<div class="top"><div class="row"><img class="face s" src="${S.face}smile.webp" alt=""><span class="month">${label(S.t)}</span><span class="ap">${'🟡'.repeat(S.ap)}${'⚪'.repeat(AP - S.ap)}</span></div>${bars()}
+    <div class="hint ${h ? 'tut' : ''}">${h ? h.hint : S.ap ? `👉 點地圖上的地方。這個月還能做 ${S.ap} 件事` : '👉 這個月的事做完了，按「下個月」'}</div></div>
+    <div class="map">${DISTRICTS.map(d => { const ss = S.sites.filter(s => s.d === d.id), ok = ss.filter(s => s.st === 'fixed').length / ss.length; return `<div class="dist" style="background:${d.c};filter:saturate(${0.25 + ok * 0.9})"><div class="dn">${d.n}<small>${Math.round(ok * 100)}%</small></div><div class="sites">${ss.map(siteChip).join('')}</div></div>`; }).join('')}</div>
+    <p class="muted center">🚧 壞掉　🏗️ 施工中　⛔ 卡住　✨ 修好　🩹 修得很隨便　💢 越來越爛</p>
+    <div class="dock"><div class="in"><div class="team">${S.team.map(m => `<button class="mem ${m.busy ? 'busy' : ''} ${m.off ? 'off' : ''}" data-m="${m.id}"><img src="art/${m.img}.webp" alt=""><br>${m.n.replace('副市長', '副')}</button>`).join('')}</div><button class="endm ${tgt === 'end' ? 'tgt' : ''}" id="end">下個月 →</button></div></div>`;
+  document.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { if (S.tut && tgt && tgt !== 'site:' + b.dataset.s) return; openSite(b.dataset.s); });
+  document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { if (S.tut && S.tut < 8) return; openMember(b.dataset.m); });
+  $('#end').onclick = () => { if (S.tut && tgt !== 'end' && S.tut < 8) return; endMonth(); };
 }
-function startRound() {
-  S.round++; S.log = []; S.events = { put: [], burned: [], credit: [] };
-  S.team.forEach(p => { p.on = null; if (p.rest) p.rest--; });
-  // 新的火：2～3 團＋季節；前一回合沒滅的火已經升級留下來
-  const live = S.fires.filter(f => !f.done && !f.pledge).map(f => f.fam.id);
-  const pool = shuffle(FIRES.filter(f => !live.includes(f.id)));
-  const n = Math.min(6 - S.fires.filter(f => !f.done && !f.pledge).length, S.round === 1 ? 3 : 2 + (S.round > 4 ? 1 : 0));
-  for (let i = 0; i < Math.max(1, n); i++) spawnFire(pool[i]);
-  if (SEASON[S.round] && !live.includes(SEASON[S.round].id)) spawnFire(SEASON[S.round]);
-  if (!S.fires.some(f => f.pledge && !f.done)) spawnPledge();
-  S.t = ROUND_SEC; S.sel = null; S.midSpawned = false;
-  renderBoard();
-  S.timer = setInterval(tick, 100);
+function siteChip(s) {
+  const tgt = tutHint() && tutHint().tgt === 'site:' + s.id;
+  const rot = s.st === 'broken' && s.idle >= 6;
+  const cls = s.st === 'work' ? (s.ob ? 'work stuck' : 'work') : s.st === 'broken' ? (rot ? 'broken rot' : 'broken') : s.st;
+  const emo = s.st === 'fixed' ? s.f : s.st === 'botched' ? s.f : s.b;
+  return `<button class="site ${cls} ${tgt ? 'tgt' : ''}" data-s="${s.id}">${emo}<small>${s.st === 'fixed' ? s.fn : s.bn}</small>${s.st === 'work' ? `<div class="prog"><b style="width:${s.prog / s.dur * 100}%"></b></div>` : ''}</button>`;
 }
 
-// ---------- 每 0.1 秒 ----------
-function power(p, f) {
-  let w = f.pledge ? 1 : (p.sp === f.fam.need ? 2 : 1);
-  if (p.trait === 'pro') w *= 1.6;
-  if (p.trait === 'image') w *= 0.4;
-  return w;
+// ---------- 點一個地方 ----------
+function sheet(html, after) {
+  const d = document.createElement('div'); d.className = 'sheet'; d.innerHTML = `<div class="box">${html}</div>`;
+  d.onclick = e => { if (e.target === d && !(S.tut && S.tut < 8)) d.remove(); };
+  document.body.appendChild(d); if (after) after(d); return d;
 }
-function reveal(p) {
-  if (p.known || p.trait === 'good') { p.known = true; return; }
-  p.known = true; toast(`😳 ${p.n} 的真面目：${TRAITS[p.trait].n}——${TRAITS[p.trait].tip}`);
-}
-function tick() {
-  S.t -= DT;
-  const blocked = S.fires.some(f => !f.done && f.fam && f.fam.blocks && f.lvl >= 1);
-  for (const f of S.fires) {
-    if (f.done) continue;
-    const crew = S.team.filter(p => p.on === f.uid);
-    if (f.pledge) {
-      if (!blocked) f.prog += crew.reduce((a, p) => a + power(p, f), 0) * DT;
-      if (f.prog >= f.max) { f.done = true; f.p.done = true; S.pledgesDone++; addFx({ pop: 8, council: 2 }, `✂️ ${f.p.t.replace('政見：', '')} 完工剪綵！`); crew.forEach(p => { p.on = null; if (p.trait === 'credit') { S.events.credit.push(p.n); addFx({ pop: -4 }); } }); if (crew.some(p => p.trait === 'credit')) toast(`📸 ${crew.find(p => p.trait === 'credit').n} 搶在你前面剪綵`); }
-      continue;
-    }
-    f.sec -= DT;
-    f.heat -= crew.reduce((a, p) => a + power(p, f), 0) * DT;
-    if (crew.length) crew.forEach(p => { if (!p.touched) { p.touched = true; if (p.trait === 'image') { reveal(p); addFx({ pop: 1 }); } } });
-    if (f.heat <= 0) {
-      f.done = true; S.put++; S.events.put.push(f);
-      const gain = { pop: 2 + f.lvl, council: f.fam.need === 'cou' ? 2 : 0 };
-      if (crew.some(p => p.trait === 'credit')) { const c = crew.find(p => p.trait === 'credit'); reveal(c); gain.pop = 0; S.events.credit.push(c.n); }
-      addFx(gain);
-      crew.forEach(p => { if (p.trait === 'pro') reveal(p); p.on = null; });
-      const v = crew.find(p => p.trait === 'vendor');
-      if (v && Math.random() < 0.6) { reveal(v); spawnFire({ id: 'scandal_' + v.id, e: '🍽️', need: 'cou', st: [`${v.n}跟廠商吃飯被拍`, '政風處介入調查', '檢調約談'] }); }
-    } else if (f.sec <= 0) escalate(f, crew);
+const closeSheets = () => document.querySelectorAll('.sheet').forEach(x => x.remove());
+function openSite(id) {
+  if (S.tut === 1) S.tut = 2;
+  if (S.tut === 5) S.tut = 6;
+  const s = site(id), h = tutHint();
+  if (s.st === 'fixed') return sheet(`<h2>${s.f} ${s.fn}</h2><div class="say">修好了。路過的市民在拍照。</div><button class="btn ghost" id="x">關閉</button>`, d => d.querySelector('#x').onclick = closeSheets);
+  if (s.st === 'botched') return sheet(`<h2>🩹 ${s.fn}（修得很隨便）</h2><div class="say">看起來修好了，但仔細看，到處都是補丁。</div><button class="btn ghost" id="x">關閉</button>`, d => d.querySelector('#x').onclick = closeSheets);
+  if (!S.ap) return toast('這個月的事做完了，按「下個月」');
+  if (s.st === 'broken') {
+    // 第一步：派誰去
+    const free = S.team.filter(m => !m.busy && !m.off);
+    return sheet(`<h2>${s.b} ${s.bn}</h2><div class="muted">${DISTRICTS.find(d => d.id === s.d).n}・大約 ${s.dur} 個月・財政 −${s.cost}・最適合：${SPEC[s.need]}</div>
+      <p><b>派誰負責？</b></p>${free.map(m => `<button class="opt ${h && h.tgt === 'mem-eng' && m.sp === 'eng' ? 'tgt' : ''}" data-m="${m.id}"><img class="face s" src="art/${m.img}.webp" alt=""><span>${m.n} ${m.sp === s.need ? '⚡' : ''}<small>專長：${SPEC[m.sp]}${m.known && m.per !== 'good' ? '・' + PERS[m.per].n : ''}</small></span></button>`).join('') || '<div class="say">大家都有事在忙。</div>'}
+      ${S.tut ? '' : `<button class="opt gray" id="surf">🎨<span>先做表面工夫<small>拍個照、掛個布條，民意先漲一點；東西還是壞的（一件事）</small></span></button><button class="btn ghost" id="x">先不要</button>`}`, d => {
+      d.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { if (S.tut && mem(b.dataset.m).sp !== 'eng') return; if (S.tut) S.tut = 3; closeSheets(); chooseHow(s, mem(b.dataset.m)); });
+      const sf = d.querySelector('#surf'); if (sf) sf.onclick = () => { closeSheets(); S.ap--; s.surface = 3; fx({ pop: 3 }); S.news.push(`🎨 ${s.bn}掛上「市府關心中」布條，大家先放心了一點。`); toast('民意 +3。東西還是壞的。'); home(); };
+      const x = d.querySelector('#x'); if (x) x.onclick = closeSheets;
+    });
   }
-  // 回合中段再冒一團火
-  if ((!S.midSpawned && S.t < ROUND_SEC * 0.6) || (S.midSpawned === 1 && S.round > 4 && S.t < ROUND_SEC * 0.3)) { S.midSpawned = (S.midSpawned || 0) + 1; const live = S.fires.filter(f => !f.done).map(f => f.fam && f.fam.id); const fam = shuffle(FIRES).find(x => !live.includes(x.id)); if (fam && S.fires.filter(f => !f.done && !f.pledge).length < 6) { spawnFire(fam); toast(`🔥 新的災難：${fam.st[0]}`); } }
-  if (S.t <= 0) return endRound();
-  renderLive();
-}
-function escalate(f, crew) {
-  const blamer = crew.find(p => p.trait === 'blame');
-  if (blamer) { reveal(blamer); addFx({ council: -3 }); }
-  if (f.lvl >= 2) {
-    // 燒成災難
-    f.done = true; f.burned = true; S.disasters++; S.events.burned.push(f);
-    addFx({ pop: -6, council: -4, budget: -5 });
-    crew.forEach(p => p.on = null);
-    toast(`💥 燒成災難：${f.fam.st[2]}`);
-    return;
+  if (s.st === 'work' && s.ob) {
+    const o = OBS[s.ob];
+    return sheet(`<h2>${o.e} ${o.t}</h2><div class="muted">${s.bn}・負責：${mem(s.by) ? mem(s.by).n : '—'}・卡了 ${s.obAge} 個月</div><div class="say">這件事不解決，工程就卡住不動。</div>
+      ${o.a.map((a, i) => `<button class="opt ${a[1].gray ? 'gray' : ''} ${h && h.tgt === 'opt:' + i ? 'tgt' : ''}" data-i="${i}">${a[1].gray ? '🤫' : '🔧'}<span>${a[0]}<small>${optDesc(a, s)}</small></span></button>`).join('')}
+      ${S.tut ? '' : '<button class="btn ghost" id="x">先放著</button>'}`, d => {
+      d.querySelectorAll('[data-i]').forEach(b => b.onclick = () => { if (S.tut && b.dataset.i !== '0') return; closeSheets(); solve(s, +b.dataset.i); });
+      const x = d.querySelector('#x'); if (x) x.onclick = closeSheets;
+    });
   }
-  f.lvl++; f.heat = f.max = 12 + f.lvl * 6 + rnd(6); f.secMax = f.sec = 14 + rnd(8);
-  addFx({ pop: -1 });
-  toast(`🔥 升級：${f.fam.st[f.lvl]}`);
-}
-function endRound() {
-  clearInterval(S.timer);
-  // 沒滅的火留到下回合，倒數接著跑（會繼續長大）
-  S.fires = S.fires.filter(f => !f.done);
-  addFx({ budget: 3 });
-  S.history.push({ round: S.round, put: S.events.put.length, burned: S.events.burned.length });
-  if (S.pop <= 0 || S.council <= 0) return endingScreen(true);
-  resultScreen();
-}
-
-// ---------- 畫面：看板 ----------
-function statBar() {
-  return `<div class="stats">${STATS.map(([k, n]) => { const v = S[k], c = v < 25 ? 'var(--red)' : v < 45 ? 'var(--yel)' : 'var(--grn)'; return `<div class="st">${n} ${Math.round(v)}<div class="bar"><div style="width:${v}%;background:${c}"></div></div></div>`; }).join('')}</div>`;
-}
-function renderBoard() {
-  app.innerHTML = `<div class="top"><div class="row"><span class="round">${LABELS[S.round - 1]}</span><span class="muted">${S.round}/${ROUNDS}</span><span class="clock" id="clock"></span></div>${statBar()}<div class="hint" id="hint"></div></div>
-    <div class="fires" id="fires"></div>
-    <div class="team"><div class="in"><div class="people" id="people"></div><div class="locked">🔒 主計・人事・警察・政風：依法不是市長換的</div></div></div>`;
-  renderLive();
-}
-function renderLive() {
-  const c = $('#clock'); if (!c) return;
-  c.textContent = `⏱ ${Math.max(0, S.t).toFixed(0)}s`; c.className = 'clock' + (S.t < 8 ? ' low' : '');
-  $('#hint').textContent = S.sel ? `👉 把 ${S.team.find(p => p.id === S.sel).n} 派到哪一團火？點那張卡` : '👉 點一個人，再點一團火（也可以直接拖過去）';
-  const blocked = S.fires.some(f => !f.done && f.fam && f.fam.blocks && f.lvl >= 1);
-  $('#fires').innerHTML = S.fires.filter(f => !f.done).map(f => {
-    const crew = S.team.filter(p => p.on === f.uid);
-    if (f.pledge) return `<div class="fire pledge" data-f="${f.uid}"><div class="t">${f.p.e} ${f.p.t}</div><div class="need">${blocked ? '⛔ 議會拒審中，政見推不動' : '派人推進度（誰都可以）'}</div><div class="meters">進度<div class="m prog"><div style="width:${f.prog / f.max * 100}%"></div></div></div><div class="slots">${crew.map(p => `<span class="chip" data-un="${p.id}">${p.e}${p.n}</span>`).join('')}</div></div>`;
-    return `<div class="fire lv${f.lvl + 1}" data-f="${f.uid}"><div class="t">${f.fam.e} ${f.fam.st[f.lvl]}</div><div class="need">需要：${SPECS[f.fam.need]}${f.lvl ? `・升級 ${f.lvl} 次` : ''}</div>
-      <div class="meters">火勢<div class="m heat"><div style="width:${Math.max(0, f.heat / f.max * 100)}%"></div></div>倒數<div class="m time"><div style="width:${Math.max(0, f.sec / f.secMax * 100)}%"></div></div></div>
-      <div class="slots">${crew.map(p => `<span class="chip" data-un="${p.id}">${p.e}${p.n}${p.sp === f.fam.need ? '⚡' : ''}</span>`).join('')}</div></div>`;
-  }).join('');
-  $('#people').innerHTML = S.team.map(p => `<div class="p ${S.sel === p.id ? 'sel' : ''} ${p.on ? 'busy' : ''} ${p.rest ? 'off' : ''}" data-p="${p.id}">${p.e}<small>${p.n}</small><span class="sp">${SPECS[p.sp]}</span>${p.known && p.trait !== 'good' ? `<small>😳${TRAITS[p.trait].n}</small>` : ''}</div>`).join('');
-  bind();
-}
-function assign(pid, fid) {
-  const p = S.team.find(x => x.id === pid), f = S.fires.find(x => x.uid === fid);
-  if (!p || !f || p.rest) return;
-  p.on = fid; S.sel = null;
-}
-function bind() {
-  document.querySelectorAll('[data-f]').forEach(el => el.onclick = e => { if (e.target.closest('[data-un]')) return; if (S.sel) { assign(S.sel, el.dataset.f); renderLive(); } });
-  document.querySelectorAll('[data-un]').forEach(el => el.onclick = () => { const p = S.team.find(x => x.id === el.dataset.un); if (p) p.on = null; renderLive(); });
-  document.querySelectorAll('[data-p]').forEach(el => {
-    el.onpointerdown = e => startDrag(e, el.dataset.p);
+  // 施工中、沒有阻礙：可以加派人力
+  return sheet(`<h2>🏗️ ${s.bn}</h2><div class="muted">負責：${mem(s.by).n}・進度 ${s.prog}/${s.dur} 個月</div><div class="say">工程照進度走中。</div>
+    <button class="opt" id="push">🏃<span>親自去工地盯進度<small>這個月多推進一格（一件事）</small></span></button><button class="btn ghost" id="x">關閉</button>`, d => {
+    d.querySelector('#push').onclick = () => { closeSheets(); S.ap--; s.prog++; S.news.push(`🏃 你親自到${s.bn}的工地盯進度，工人很緊張。`); if (s.prog >= s.dur) finish(s); home(); };
+    d.querySelector('#x').onclick = closeSheets;
   });
 }
-// 拖曳：按住人拖到火上；只是點一下就當成「選取」
-function startDrag(e, pid) {
-  const p = S.team.find(x => x.id === pid); if (!p || p.rest) return;
-  const sx = e.clientX, sy = e.clientY; let g = null, over = null, moved = false;
-  const mv = ev => {
-    if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) > 8) { moved = true; g = document.createElement('div'); g.className = 'ghost'; g.textContent = p.e; document.body.appendChild(g); }
-    if (!moved) return;
-    g.style.left = ev.clientX + 'px'; g.style.top = ev.clientY + 'px';
-    const el = document.elementFromPoint(ev.clientX, ev.clientY), f = el && el.closest('[data-f]');
-    if (over && over !== f) over.classList.remove('drop');
-    over = f; if (f) f.classList.add('drop');
-  };
-  const up = () => {
-    window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up);
-    if (g) g.remove();
-    if (moved && over) assign(pid, over.dataset.f);
-    else if (!moved) S.sel = S.sel === pid ? null : pid;
-    renderLive();
-  };
-  window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
+const optDesc = (a, s) => { const o = a[1], p = []; if (o.budget) p.push(`財政 ${o.budget}`); if (o.pop) p.push(`民意 ${o.pop > 0 ? '+' : ''}${o.pop}`); if (o.gray) p.push('快，但有人會記住'); if (o.swap) p.push('換人要花時間'); if (a[2]) p.push(`找${SPEC[a[2]]}專長的人比較容易成功`); return p.join('・') || '要花一件事'; };
+// 第二步：怎麼發包
+function chooseHow(s, m) {
+  const h = tutHint();
+  sheet(`<h2>${s.b} ${s.bn}</h2><div class="muted">負責：${m.n}${m.sp === s.need ? ' ⚡' : ''}</div>
+    <button class="opt ${h && h.tgt === 'opt:0' ? 'tgt' : ''}" id="n" ${S.budget < s.cost ? 'disabled' : ''}>📋<span>正常發包<small>${S.budget < s.cost ? `財政不夠（要 ${s.cost}，只剩 ${Math.round(S.budget)}）` : `財政 −${s.cost}`}</small></span></button>
+    ${S.tut ? '' : `<button class="opt gray" id="b" ${S.budget < s.cost ? 'disabled' : ''}>🤫<span>正常發包，但私下拿點好處<small>財政 −${s.cost}・你的口袋 +${Math.ceil(s.cost / 2)}・會修得比較隨便，可能被爆料</small></span></button>`}
+    ${S.tut ? '' : '<button class="btn ghost" id="x">算了</button>'}`, d => {
+    d.querySelector('#n').onclick = () => { closeSheets(); start(s, m, false); };
+    const b = d.querySelector('#b'); if (b) b.onclick = () => { closeSheets(); start(s, m, true); };
+    const x = d.querySelector('#x'); if (x) x.onclick = closeSheets;
+  });
 }
-function toast(t) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 2600); }
+function start(s, m, bribe) {
+  S.ap--; fx({ budget: -s.cost });
+  s.st = 'work'; s.by = m.id; s.prog = 0; s.bribe = bribe; s.idle = 0; m.busy = s.id;
+  if (bribe) { fx({ pocket: Math.ceil(s.cost / 2) }); S.heat += 2; }
+  let msg = `🏗️ ${s.bn}開工了，由${m.n}負責。`;
+  if (m.per === 'image') { const r = reveal(m); if (r) msg += '<br>' + r; }
+  S.news.push(msg.replace(/<br>.*$/, ''));
+  if (S.tut === 3) S.tut = 4;
+  toastHtml(msg);
+  home();
+}
+function solve(s, i) {
+  const o = OBS[s.ob], a = o.a[i], m = mem(s.by);
+  S.ap--;
+  const eff = a[1];
+  let ok = true;
+  if (a[2] && m && m.sp !== a[2] && Math.random() < 0.35) ok = false; // 不對專長的人，有機會談不攏
+  if (S.tut) ok = true;
+  if (ok) {
+    fx(eff); if (eff.gray) { S.heat += 1; fx({ pocket: 1 }); }
+    if (eff.swap && m) { replaceMember(m, true); }
+    S.news.push(`🔧 ${s.bn}：${a[0]}，${o.t}解決了。`);
+    s.ob = null; s.obAge = 0;
+    toast(`解決了：${o.t}`);
+  } else { S.news.push(`😓 ${s.bn}：${a[0]}，但談不攏。`); toast('談不攏，下個月再試試'); }
+  if (S.tut === 6) S.tut = 7;
+  home();
+}
+function finish(s) {
+  const m = mem(s.by);
+  s.st = s.bribe ? 'botched' : 'fixed'; if (m) m.busy = null;
+  S.fixedCount++;
+  let msg = s.bribe ? `🩹 ${s.fn}「完工」了，但到處是補丁。` : `✨ ${s.fn}完工了！`;
+  let gain = s.bribe ? 2 : 6;
+  if (m && m.per === 'credit') { gain = 2; msg += '<br>' + (reveal(m) || `${m.n}又站到你前面去剪綵了。`); }
+  fx({ pop: gain });
+  S.news.push(msg.replace(/<br>.*$/, ''));
+  S.done = S.done || []; S.done.push(s);
+}
 
-// ---------- 回合結果：一句劇情＋脆＋少量數字 ----------
-const USERS = ['捷運通勤的阿凱', '早餐店阿姨', '貓奴工程師', '外送員小陳', '退休國文老師', '機車族日常', '三寶媽在線上', '里長的頭號粉絲', '熬夜的研究生', '市場賣菜的大姊', '計程車運將', '咖啡店店長'];
-function storyOf(ev) {
-  if (ev.burned.length >= 2) return `兩團火同時燒成災難，記者在市府門口連線一整天。`;
-  if (ev.burned.length === 1) return `「${ev.burned[0].fam.st[2]}」——這一季大家只記得這件事。`;
-  if (ev.credit.length) return `火是你們滅的，但記者會上站在中間的是${ev.credit[0]}。`;
-  if (ev.put.length >= 4) return `這一季手忙腳亂，但居然都撐住了。秘書長說：「很少見。」`;
-  if (ev.put.length === 0) return `一團火都沒滅，大家都在開會。`;
-  return `滅了 ${ev.put.length} 團火，剩下的明天會更大。`;
+// ---------- 團隊 ----------
+function openMember(id) {
+  const m = mem(id);
+  sheet(`<div class="row"><img class="face" src="art/${m.img}.webp" alt=""><div><h2>${m.n}</h2><div class="muted">專長：${SPEC[m.sp]}・${m.busy ? '負責：' + site(m.busy).bn : '目前沒事'}</div></div></div>
+    <div class="say">${m.known ? (m.per === 'good' ? '用過了，靠得住。' : `原來他是「${PERS[m.per].n}」的人。`) : '還不知道他是什麼樣的人，派個工作就知道了。'}</div>
+    <button class="opt" id="swap" ${S.ap ? '' : 'disabled'}>🔁<span>換掉他<small>花一件事、民意 −3，新的人下個月才到；記者會說「內閣不穩」</small></span></button>
+    <div class="muted">🔒 主計、人事、警察、政風四位，依法不是市長換的。</div><button class="btn ghost" id="x">關閉</button>`, d => {
+    d.querySelector('#swap').onclick = () => { closeSheets(); S.ap--; fx({ pop: -3 }); replaceMember(m); home(); };
+    d.querySelector('#x').onclick = closeSheets;
+  });
 }
-function resultScreen() {
-  const ev = S.events, start = S.history.length > 1 ? null : null;
-  const mood = ev.burned.length ? 'down' : 'up';
-  const lines = { up: ['欸這季還可以', '第一次覺得市府有在做事', '先給個讚，看後續', '有比前任好一點點'], down: ['市府到底在幹嘛', '笑死，又來', '選上就這樣？', '四年很快就過了喔'], mid: ['方向對啦，但也太慢', '先不要高興太早', '好壞參半'] };
+function replaceMember(m, silent) {
+  const i = S.team.indexOf(m), base = SPARE.find(x => x.sp === m.sp) || pick(SPARE);
+  const nm = { ...mk(base, i), off: 1, busy: m.busy };
+  S.team[i] = nm;
+  if (m.busy) site(m.busy).by = nm.id;
+  S.news.push(`🔁 ${m.n}下台，${nm.n}接任。記者：「新市府內閣不穩？」`);
+}
+
+// ---------- 下個月 ----------
+function endMonth() {
+  S.ap = 0; const lines = [];
+  for (const s of S.sites) {
+    if (s.st === 'broken') { s.idle++; if (s.idle === 6) { lines.push(`💢 ${s.bn}越來越爛，里長在臉書開罵。`); fx({ pop: -2 }); } else if (s.idle > 6 && s.idle % 3 === 0) fx({ pop: -1 }); if (s.surface) { s.surface--; if (!s.surface) { fx({ pop: -4 }); lines.push(`🎨 ${s.bn}的布條還在，東西還是壞的。脆上：「市府只會掛布條」。`); } } continue; }
+    if (s.st !== 'work') continue;
+    const m = mem(s.by);
+    if (s.ob) { s.obAge++; if (s.obAge >= 3) { lines.push(`⛔ ${s.bn}卡了三個月，${OBS[s.ob].t}還沒解決。民眾越來越不耐煩。`); fx({ pop: -2 }); } if (m && m.per === 'blame' && !m.known) lines.push(reveal(m).replace(/<br>.*$/, '')); continue; }
+    let step = 1;
+    if (m && m.sp === s.need) step += Math.random() < 0.5 ? 1 : 0;
+    if (m && m.per === 'pro') { step += 1; const r = reveal(m); if (r) lines.push(r.replace(/<br>.*$/, '')); }
+    if (m && m.per === 'image' && Math.random() < 0.5) step = 0;
+    if (m && m.off) step = 0;
+    if (S.tut) step = 1; // 教學中一個月走一格
+    s.prog = Math.min(s.dur, s.prog + step);
+    if (s.prog >= s.dur) { finish(s); continue; }
+    // 冒出阻礙
+    if (S.tut === 4 && s.id === 'park') { s.ob = 'protest'; lines.push('📢 公園附近的居民抗議施工太吵！'); S.tut = 5; continue; }
+    if (!S.tut && Math.random() < (s.hard ? 0.5 : 0.33)) { s.ob = pick(s.obs); lines.push(`${OBS[s.ob].e} ${s.bn}：${OBS[s.ob].t}`); }
+    if (m && m.per === 'vendor' && Math.random() < 0.3) { S.heat += 1; const r = reveal(m); lines.push(r ? r.replace(/<br>.*$/, '') : `📸 ${m.n}又被拍到跟廠商吃飯。`); fx({ pop: -2 }); }
+  }
+  S.team.forEach(m => { if (m.off) m.off = 0; });
+  fx({ budget: 4 });
+  // 拿過好處的，有機會被查
+  if (S.heat >= 6 && Math.random() < 0.25 + (S.heat - 6) * 0.08) { S.caught = true; lines.push('🚔 檢調到市府調閱工程資料。記者在門口等你。'); fx({ pop: -12 }); }
+  const all = S.news.concat(lines); S.news = [];
+  if (S.tut === 7) S.tut = 8;
+  monthReport(all);
+}
+const USERS = ['捷運通勤的阿凱', '早餐店阿姨', '貓奴工程師', '外送員小陳', '退休國文老師', '機車族日常', '三寶媽在線上', '里長的頭號粉絲', '熬夜的研究生', '市場賣菜的大姊', '計程車運將', '咖啡店店長', '公車司機老張', '自行車通勤族'];
+function monthReport(lines) {
+  const fixedNow = (S.done || []).filter(x => !x.shown); fixedNow.forEach(x => x.shown = 1);
+  const good = fixedNow.length > 0, bad = lines.some(l => /💢|⛔|🚔|📸/.test(l));
+  const C = { good: ['欸，' + (fixedNow[0] ? fixedNow[0].fn : '這個') + '真的修好了', '第一次覺得市府有在做事', '我家附近終於變漂亮了'], bad: ['四年很快就過了喔', '市府到底在幹嘛', '只會開記者會'], mid: ['方向對啦，但也太慢', '先不要高興太早', '路過看了一下，還在施工'] };
   const us = shuffle(USERS);
-  const team = S.team.map(p => `<div class="member"><span class="e">${p.e}</span><div><b>${p.n}</b>（${SPECS[p.sp]}）<br><small class="muted">${p.known ? (p.trait === 'good' ? '靠得住' : '😳 ' + TRAITS[p.trait].n) : '真面目還不知道'}${p.rest ? '・剛到任，下回合才能派' : ''}</small></div>${p.known && p.trait !== 'good' && p.trait !== 'pro' ? `<button class="x" data-x="${p.id}">換掉</button>` : ''}</div>`).join('');
-  app.innerHTML = `<div class="top"><div class="row"><span class="round">${LABELS[S.round - 1]}・結束</span></div>${statBar()}</div>
-    <div class="card"><div class="story">${storyOf(ev)}</div>
-      <div class="log">${ev.put.map(f => `<div>✅ ${f.fam.e} 滅了：${f.fam.st[f.lvl]}</div>`).join('')}${ev.burned.map(f => `<div class="down">💥 燒成災難：${f.fam.st[2]}</div>`).join('')}${S.log.map(l => `<div>${l}</div>`).join('')}</div></div>
-    <div class="card"><div class="muted">🧵 脆上的反應</div>
-      <div class="post"><b>${us[0]}</b>${pick(lines[mood])}</div><div class="post"><b>${us[1]}</b>${pick(lines.mid)}</div></div>
-    <div class="card"><b>👥 你的團隊</b><div class="muted">用過才知道真面目。換人要花一回合，也會被說內閣不穩（民意 −3）。</div>${team}</div>
-    <button class="btn" id="go">${S.round >= ROUNDS ? '看結局 →' : `下一回合：${LABELS[S.round]} →`}</button>`;
-  document.querySelectorAll('[data-x]').forEach(b => b.onclick = () => {
-    const i = S.team.findIndex(p => p.id === b.dataset.x); const old = S.team[i];
-    const base = SPARE.find(x => x.sp === old.sp) || pick(SPARE);
-    S.team[i] = { ...mkPerson(base, i), rest: 1 };
-    addFx({ pop: -3 });
-    toast(`🔁 換掉 ${old.n}。記者：「新市府內閣不穩？」`);
-    resultScreen();
-  });
-  $('#go').onclick = () => S.round >= ROUNDS ? endingScreen(false) : startRound();
+  app.innerHTML = `<div class="top"><div class="row"><img class="face s" src="${S.face}${good ? 'big' : bad ? 'sad' : 'flat'}.webp" alt=""><span class="month">${label(S.t)}・月底</span></div>${bars()}</div>
+    ${fixedNow.length ? `<div class="card center"><div style="font-size:42px">${fixedNow.map(x => x.b + '→' + x.f).join('　')}</div><b>${fixedNow.map(x => x.st === 'botched' ? x.fn + '（修得很隨便）' : x.fn).join('、')}</b></div>` : ''}
+    <div class="card news">${lines.length ? lines.map(l => `<div>${l}</div>`).join('') : '<div>這個月平平靜靜，什麼都沒發生。</div>'}</div>
+    <div class="card"><div class="muted">🧵 脆上的反應</div><div class="post"><b>${us[0]}</b>${pick(good ? C.good : bad ? C.bad : C.mid)}</div><div class="post"><b>${us[1]}</b>${pick(C.mid)}</div></div>
+    ${S.tut === 8 ? '<div class="hint tut">✨ 地圖那一塊變漂亮了！教學結束，之後就交給你了。想修的永遠比能做的多。</div>' : ''}
+    <button class="btn" id="go">${S.t >= TURNS ? '看結局 →' : '下一個月 →'}</button>`;
+  $('#go').onclick = () => { if (S.tut === 8) S.tut = 0; if (S.t >= TURNS || S.pop <= 0) return ending(); S.t++; S.ap = AP; home(); };
 }
 
-// ---------- 結局 ----------
-function endingScreen(early) {
-  const score = S.pop * 0.5 + S.council * 0.3 + S.budget * 0.2 + S.pledgesDone * 8 - S.disasters * 3;
-  const E = early ? { e: '🪧', t: '被罷免了', d: '民意或議會歸零，罷免案通過。選上真的是災難的開始。' }
-    : score >= 60 ? { e: '🌤️', t: '連任成功', d: `四年滅了 ${S.put} 團火，兌現 ${S.pledgesDone} 個政見。連任那晚，你想起就職那天的抽屜。` }
-    : score >= 42 ? { e: '😮‍💨', t: '驚險連任', d: `贏了，但只贏一點點。燒成災難的有 ${S.disasters} 團，大家都還記得。` }
-    : { e: '📦', t: '一任市長', d: `四年過去，${S.disasters} 團火燒成災難。下一任市長打開抽屜，看到的是你留下的東西。` };
-  const fake = S.team.filter(p => p.trait !== 'good');
-  app.innerHTML = `<div class="ending"><div class="big">${E.e}</div><h2>${E.t}</h2><p>${E.d}</p>
-    <div class="card" style="text-align:left">🔥 滅火 ${S.put} 團・💥 燒成災難 ${S.disasters} 團・✂️ 政見 ${S.pledgesDone} 個<br>😳 團隊的真面目：${fake.length ? fake.map(p => `${p.n}（${TRAITS[p.trait].n}）`).join('、') : '大家都靠得住，難得'}</div>
+// ---------- 結局：城市樣貌、民意、你的口袋 ----------
+function ending() {
+  const city = cityPct(), clean = S.pocket === 0, rich = S.pocket >= 15;
+  let E;
+  if (S.pop <= 0) E = ['🪧', '被罷免了', '民意歸零，罷免案通過。'];
+  else if (S.caught && city >= 50) E = ['🚔', '城市很美，但你被約談了', '新的公園、新的捷運、新的市場。剪綵照片上的你，現在出現在新聞的另一個版面。'];
+  else if (S.caught) E = ['🚔', '又爛又貪', '城市沒修好，口袋倒是滿了。做壞事一定會被抓。'];
+  else if (rich && city < 40) E = ['💼', '口袋很滿，城市很破', '你沒被抓到，但路過的每個工地都在提醒大家這四年發生了什麼。'];
+  else if (city >= 60 && S.pop >= 50) E = ['🌤️', 'N 城變漂亮了，連任穩了', '四年修好了 ' + S.fixedCount + ' 個地方。連任那晚，你想起就職那天，滿地圖的 🚧。'];
+  else if (clean && city < 35) E = ['🫥', '清清白白，但沒人記得你', '你一毛錢都沒拿，也沒修好幾個地方。四年後，大家記得的是前任。'];
+  else E = ['🧩', '修修補補的四年', '有修好的、也有還在施工的。N 城沒有變成你想的樣子，但比你接手時好一點。'];
+  app.innerHTML = `<div class="ending"><img class="face" src="${S.face}${E[0] === '🌤️' ? 'big' : E[0] === '🚔' || E[0] === '🪧' ? 'sad' : 'flat'}.webp" alt=""><div class="big">${E[0]}</div><h2>${E[1]}</h2><p>${E[2]}</p>
+    <div class="tri"><div><b>🏙️ ${city}%</b>城市修好</div><div><b>😊 ${Math.round(S.pop)}</b>民意</div><div><b>🤫 ${S.pocket}</b>你的口袋</div></div>
+    <div class="card" style="text-align:left">👥 你的團隊：${S.team.map(m => `${m.n}${m.known ? (m.per === 'good' ? '（靠得住）' : `（${PERS[m.per].n}）`) : '（一直沒看清楚）'}`).join('、')}</div>
     <button class="btn" id="again">🔁 再當一次市長</button></div>`;
-  $('#again').onclick = () => { newGame(); startRound(); };
+  $('#again').onclick = () => { newGame(false); home(); };
 }
+function toast(t) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 3000); }
+function toastHtml(t) { const d = document.createElement('div'); d.className = 'toast'; d.innerHTML = t; document.body.appendChild(d); setTimeout(() => d.remove(), 3500); }
 
 // ---------- 標題 ----------
 function title() {
-  app.innerHTML = `<h1>🔥 災難看板</h1><p class="center muted">《我推的市長》系列・試玩版</p>
-    <div class="card"><p><b>你是剛選上的市長。</b>選上才是災難的開始。</p>
-    <p>每回合 30 秒，看板上同時燒著好幾團火。<b>點一個人、再點一團火</b>（或直接拖過去）派人去滅。專長對了⚡滅得快。</p>
-    <p>沒人管的火會升級，三段之後燒成災難。人永遠不夠用。</p>
-    <p>你的副市長和局長各有<b>真面目</b>，用了才知道。</p></div>
-    <button class="btn" id="go">上任 →</button><p class="center muted">摩卡與貓貓小隊・試玩版 0.1</p>`;
-  $('#go').onclick = () => { newGame(); startRound(); };
+  app.innerHTML = `<h1>🏙️ 修城市</h1><p class="center muted">《我推的市長》系列・試玩版 0.2</p>
+    <div class="card"><p><b>你是剛選上的 N 城市長。</b></p><p>前任留下一個百廢待舉的城市：蓋一半的場館、暗暗的路燈、延期的捷運、髒亂的公園……</p><p>每個月只能做 <b>3 件事</b>。想修的，永遠比能做的多。</p></div>
+    <button class="btn" id="go">上任（有教學）→</button><button class="btn ghost" id="skip">我玩過了，跳過教學</button>
+    <p class="center muted">人物、政黨、城市全部虛構・摩卡與貓貓小隊</p>`;
+  $('#go').onclick = () => { newGame(true); home(); };
+  $('#skip').onclick = () => { newGame(false); home(); };
 }
 title();
 </script>
