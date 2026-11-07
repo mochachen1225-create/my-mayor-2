@@ -529,7 +529,7 @@ function ending() {
   const cms = COMMENTS.filter(c => c[0]()).map(c => c[1]), us = shuffle(USERS);
   const distLine = d => { const ks = Object.keys(SITES).filter(k => SITES[k][0] === d.id), st = ks.map(k => S.site[k]);
     const f = st.filter(x => x === 'fixed').length, r = st.filter(x => x === 'rot').length, w = st.filter(x => x === 'work').length;
-    return f === ks.length ? '✨ 整區都變漂亮了' : f > r && f >= w && f ? '🌤️ 變漂亮了' : w >= f && w > r && w ? '🏗️ 蓋到一半' : r ? '💢 比四年前更破' : '😐 還是老樣子'; };
+    return f === ks.length ? '✨ 整區都變漂亮了' : f && r ? '🌗 有變漂亮的，也有更破的' : f > r && f >= w && f ? '🌤️ 變漂亮了' : w >= f && w > r && w ? '🏗️ 蓋到一半' : r ? '💢 比四年前更破' : '😐 還是老樣子'; };
   app.innerHTML = `<div class="ending"><h2>🗺️ N 城，四年後</h2>
     <div class="endmap">${DIST.map(d => { const ks = Object.keys(SITES).filter(k => SITES[k][0] === d.id), ok = ks.filter(k => S.site[k] === 'fixed').length / ks.length;
       return `<div style="background:${d.c};filter:saturate(${.3 + ok * .9})"><b>${d.n}</b><div class="em">${ks.map(k => `<span class="${S.site[k]}">${S.site[k] === 'fixed' ? SITES[k][2] : SITES[k][1]}</span>`).join('')}</div>${distLine(d)}</div>`; }).join('')}</div>
